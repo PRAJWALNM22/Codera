@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firebase Connection Test</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <h1>Firebase Connection Test</h1>
+    <div id="status">Testing...</div>
+    <div id="results"></div>
+
+    <script>
+        // Your Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCdl2AhZG9HBwDLcSENTroup0ryR7_NdW8",
+            authDomain: "codera-battle.firebaseapp.com",
+            projectId: "codera-battle",
+            storageBucket: "codera-battle.firebasestorage.app",
+            messagingSenderId: "825772579105",
+            appId: "1:825772579105:web:583045e4bb94c7f9af0660",
+            measurementId: "G-G10VGFQVBN"
+        };
+
+        // Helper functions
+        window.initializeApp = firebase.initializeApp;
+        window.getFirestore = () => firebase.firestore();
+        window.getAuth = () => firebase.auth();
+        window.signInAnonymously = (auth) => auth.signInAnonymously();
+
+        const status = document.getElementById('status');
+        const results = document.getElementById('results');
+
+        async function testFirebase() {
+            try {
+                status.innerHTML = '🔄 Initializing Firebase...';
+                
+                // Initialize Firebase
+                const app = firebase.initializeApp(firebaseConfig);
+                const db = firebase.firestore();
+                const auth = firebase.auth();
+                
+                status.innerHTML = '✅ Firebase initialized successfully!';
+                results.innerHTML += '<p>✅ Firebase app: ' + app.name + '</p>';
+                
+                // Test authentication
+                status.innerHTML = '🔄 Testing authentication...';
+                const userCredential = await auth.signInAnonymously();
+                results.innerHTML += '<p>✅ Anonymous auth: ' + userCredential.user.uid + '</p>';
+                
+                // Test Firestore
+                status.innerHTML = '🔄 Testing Firestore...';
+                const testDoc = await db.collection('test').add({
+                    message: 'Hello Firebase!',
+                    timestamp: new Date()
+                });
+                results.innerHTML += '<p>✅ Firestore write: ' + testDoc.id + '</p>';
+                
+                // Test Firestore read
+                const doc = await testDoc.get();
+                if (doc.exists) {
+                    results.innerHTML += '<p>✅ Firestore read: ' + doc.data().message + '</p>';
+                }
+                
+                status.innerHTML = '🎉 All Firebase tests passed!';
+                results.innerHTML += '<p><strong>🎉 Firebase is ready for your battle rooms!</strong></p>';
+                
+                // Clean up test data
+                await testDoc.delete();
+                results.innerHTML += '<p>🧹 Test data cleaned up</p>';
+                
+            } catch (error) {
+                status.innerHTML = '❌ Firebase test failed';
+                results.innerHTML += '<p>❌ Error: ' + error.message + '</p>';
+                console.error('Firebase test error:', error);
+            }
+        }
+
+        // Run test when page loads
+        testFirebase();
+    </script>
+</body>
+</html>

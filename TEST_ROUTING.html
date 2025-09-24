@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Routing</title>
+</head>
+<body>
+    <h1>Test Hash Routing</h1>
+    <p>Click these links to test routing:</p>
+    <ul>
+        <li><a href="#/home">Home</a></li>
+        <li><a href="#/battle">Battle</a></li>
+        <li><a href="#/battle/room">Battle Room</a></li>
+        <li><a href="#/battle/room?id=test123">Battle Room with ID</a></li>
+    </ul>
+    
+    <div id="current-route">Current route will appear here</div>
+    
+    <script>
+        function updateRoute() {
+            const hash = window.location.hash;
+            const route = hash ? hash.substring(1) : '/';
+            document.getElementById('current-route').innerHTML = `<strong>Current Route:</strong> ${route}`;
+            console.log('Route changed to:', route);
+        }
+        
+        // Update on load
+        updateRoute();
+        
+        // Update on hash change
+        window.addEventListener('hashchange', updateRoute);
+    </script>
+</body>
+</html>
