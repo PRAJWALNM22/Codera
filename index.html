@@ -2213,7 +2213,13 @@ User question: ${newAiMessage}`;
                 python: `def two_sum(nums, target):\n    # Write your Python code here`,
                 java: `public int[] twoSum(int[] nums, int target) {\n    // Write your Java code here\n    return new int[0];\n}`,
                 cpp: `vector<int> twoSum(vector<int>& nums, int target) {\n    // Write your C++ code here\n    return {};\n}`,
-            }
+            },
+            testCases: [
+                { input: [2, 7, 11, 15], target: 9, expected: [0, 1] },
+                { input: [3, 2, 4], target: 6, expected: [1, 2] },
+                { input: [3, 3], target: 6, expected: [0, 1] },
+                { input: [5, 5, 1, 1], target: 10, expected: [0, 1] },
+            ],
         },
         2: {
             title: "Add Two Numbers",
@@ -2229,7 +2235,12 @@ User question: ${newAiMessage}`;
                 python: `def add_two_numbers(l1, l2):\n    # Write your Python code here`,
                 java: `public int[] addTwoNumbers(int[] l1, int[] l2) {\n    // Write your Java code here\n    return new int[0];\n}`,
                 cpp: `vector<int> addTwoNumbers(vector<int>& l1, vector<int>& l2) {\n    // Write your C++ code here\n    return {};\n}`,
-            }
+            },
+            testCases: [
+                { input: { l1: [2,4,3], l2: [5,6,4] }, expected: [7,0,8] },
+                { input: { l1: [0], l2: [0] }, expected: [0] },
+                { input: { l1: [9,9,9,9,9,9,9], l2: [9,9,9,9] }, expected: [8,9,9,9,0,0,0,1] },
+            ],
         },
         3: {
             title: "Longest Substring Without Repeating Characters",
@@ -2245,7 +2256,13 @@ User question: ${newAiMessage}`;
                 python: `def length_of_longest_substring(s):\n    # Write your Python code here`,
                 java: `public int lengthOfLongestSubstring(String s) {\n    // Write your Java code here\n    return 0;\n}`,
                 cpp: `int lengthOfLongestSubstring(string s) {\n    // Write your C++ code here\n    return 0;\n}`,
-            }
+            },
+            testCases: [
+                { input: "abcabcbb", expected: 3 },
+                { input: "bbbbb", expected: 1 },
+                { input: "pwwkew", expected: 3 },
+                { input: "", expected: 0 },
+            ],
         },
         4: {
             title: "Median of Two Sorted Arrays",
@@ -2261,7 +2278,12 @@ User question: ${newAiMessage}`;
                 python: `def find_median_sorted_arrays(nums1, nums2):\n    # Write your Python code here`,
                 java: `public double findMedianSortedArrays(int[] nums1, int[] nums2) {\n    // Write your Java code here\n    return 0.0;\n}`,
                 cpp: `double findMedianSortedArrays(vector<int>& nums1, vector<int>& nums2) {\n    // Write your C++ code here\n    return 0.0;\n}`,
-            }
+            },
+            testCases: [
+                { input: { nums1: [1,3], nums2: [2] }, expected: 2.0 },
+                { input: { nums1: [1,2], nums2: [3,4] }, expected: 2.5 },
+                { input: { nums1: [0,0], nums2: [0,0] }, expected: 0.0 },
+            ],
         },
         5: {
             title: "Reverse Linked List",
@@ -2277,7 +2299,12 @@ User question: ${newAiMessage}`;
                 python: `def reverse_list(head):\n    # Write your Python code here`,
                 java: `public int[] reverseList(int[] head) {\n    // Write your Java code here\n    return new int[0];\n}`,
                 cpp: `vector<int> reverseList(vector<int>& head) {\n    // Write your C++ code here\n    return {};\n}`,
-            }
+            },
+            testCases: [
+                { input: [1,2,3,4,5], expected: [5,4,3,2,1] },
+                { input: [1,2], expected: [2,1] },
+                { input: [], expected: [] },
+            ],
         }
     };
 
@@ -2286,31 +2313,42 @@ User question: ${newAiMessage}`;
         const [battleProblemId, setBattleProblemId] = useState(1);
         const problem = PROBLEMS_DATA[battleProblemId] || PROBLEMS_DATA[1];
         const [selectedLanguage, setSelectedLanguage] = useState('javascript');
-        const [player1Code, setPlayer1Code] = useState(problem.starterCode[selectedLanguage]);
+        const [player1Code, setPlayer1Code] = useState('');
         const [player2Code, setPlayer2Code] = useState(`function twoSum(nums, target) {\n  // Your opponent's code (synced)\n}`);
         const [player1Output, setPlayer1Output] = useState("");
         const [player2Output, setPlayer2Output] = useState("");
         const [timer, setTimer] = useState(600); // remaining seconds
-        const [chatMessages, setChatMessages] = useState([]);
+        // Initialize chat messages with persistence
+        const [chatMessages, setChatMessages] = useState(() => {
+            try {
+                const saved = localStorage.getItem(`battle-chat-${roomId}`);
+                return saved ? JSON.parse(saved) : [];
+            } catch (e) {
+                console.warn('⚠️ Could not load saved chat messages:', e);
+                return [];
+            }
+        });
         const [newChatMessage, setNewChatMessage] = useState('');
         const [battleStatus, setBattleStatus] = useState("Waiting"); // "Waiting", "In Progress", "Ended"
         const [activeBattleTab, setActiveBattleTab] = useState('Description'); // For Battle Room tabs
         const [player1Progress, setPlayer1Progress] = useState(0); // For progress bars
         const [player2Progress, setPlayer2Progress] = useState(0);
         const [winner, setWinner] = useState(null); // 'player1', 'player2', 'draw'
+        const [editor, setEditor] = useState(null);
+        const [loading, setLoading] = useState(false);
         const [roomId, setRoomId] = useState(null);
         const [participants, setParticipants] = useState({});
         const [isCreator, setIsCreator] = useState(false);
         const [durationSeconds, setDurationSeconds] = useState(600);
         const startedAtRef = useRef(null);
 
-        // WebRTC Voice Chat & Screen Sharing State
+        // WebRTC Voice Chat & Code Sharing State
         const [isVoiceChatEnabled, setIsVoiceChatEnabled] = useState(false);
         const [isMuted, setIsMuted] = useState(false);
-        const [isScreenSharing, setIsScreenSharing] = useState(false);
-        const [remoteScreenStream, setRemoteScreenStream] = useState(null);
+        const [isCodeSharing, setIsCodeSharing] = useState(false);
+        const [friendCode, setFriendCode] = useState('');
         const [localAudioStream, setLocalAudioStream] = useState(null);
-        const [localScreenStream, setLocalScreenStream] = useState(null);
+        const [isViewingFriendCode, setIsViewingFriendCode] = useState(false);
         const [voicePeerConnection, setVoicePeerConnection] = useState(null);
         const [screenPeerConnection, setScreenPeerConnection] = useState(null);
         const [isConnecting, setIsConnecting] = useState(false);
@@ -2614,16 +2652,120 @@ User question: ${newAiMessage}`;
             chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }, [chatMessages]);
         
-        // Debug: Monitor remoteScreenStream state changes
+        // Code Sharing Listener - Listen for friend's code updates
         useEffect(() => {
-            console.log('📺 Remote screen stream state changed:', {
-                hasStream: !!remoteScreenStream,
-                streamId: remoteScreenStream?.id,
-                active: remoteScreenStream?.active,
-                videoTracks: remoteScreenStream?.getVideoTracks()?.length || 0,
-                audioTracks: remoteScreenStream?.getAudioTracks()?.length || 0
-            });
-        }, [remoteScreenStream]);
+            if (!roomId) return;
+            
+            let unsubscribeCodeShare = null;
+            
+            if (db && window.firebase) {
+                // Firebase listener for code sharing
+                unsubscribeCodeShare = db.collection('battleRooms').doc(roomId)
+                    .onSnapshot((doc) => {
+                        if (!doc.exists) return;
+                        const data = doc.data();
+                        
+                        // Handle code sharing updates from friend
+                        if (data.codeShare && data.codeShare.from !== myId) {
+                            if (data.codeShare.active && data.codeShare.sharedCode) {
+                                console.log('💻 Received friend\'s code update:', data.codeShare.from);
+                                setFriendCode(data.codeShare.sharedCode);
+                                setIsViewingFriendCode(true);
+                            } else if (!data.codeShare.active || !data.codeShare.sharedCode) {
+                                console.log('❌ Friend stopped sharing code');
+                                setIsViewingFriendCode(false);
+                                setFriendCode('');
+                            }
+                        } else if (!data.codeShare && isViewingFriendCode) {
+                            // Handle case where codeShare field is completely removed
+                            console.log('❌ Code sharing data removed from Firebase');
+                            setIsViewingFriendCode(false);
+                            setFriendCode('');
+                        }
+                    }, (error) => {
+                        console.error('❌ Code sharing listener error:', error);
+                    });
+            } else {
+                // localStorage fallback for local testing
+                const checkForCodeUpdates = () => {
+                    try {
+                        const codeDataStr = localStorage.getItem('code-share-' + roomId);
+                        
+                        // If no data exists, or data was removed, close the friend's code view
+                        if (!codeDataStr) {
+                            if (isViewingFriendCode) {
+                                console.log('❌ Code sharing data removed (local)');
+                                setIsViewingFriendCode(false);
+                                setFriendCode('');
+                            }
+                            return;
+                        }
+                        
+                        const codeData = JSON.parse(codeDataStr);
+                        
+                        // Check if friend is sharing code
+                        if (codeData.from !== myId && codeData.active && codeData.sharedCode) {
+                            console.log('💻 Received friend\'s code update (local):', codeData.from);
+                            setFriendCode(codeData.sharedCode);
+                            setIsViewingFriendCode(true);
+                        } else if (codeData.from !== myId && (!codeData.active || !codeData.sharedCode)) {
+                            console.log('❌ Friend stopped sharing code (local)');
+                            setIsViewingFriendCode(false);
+                            setFriendCode('');
+                        }
+                    } catch (e) {
+                        // If parsing fails, also close the view
+                        if (isViewingFriendCode) {
+                            console.log('❌ Error parsing code data, closing view (local)');
+                            setIsViewingFriendCode(false);
+                            setFriendCode('');
+                        }
+                    }
+                };
+                
+                // Check every 2 seconds for code updates
+                const interval = setInterval(checkForCodeUpdates, 2000);
+                
+                return () => clearInterval(interval);
+            }
+            
+            return () => {
+                if (unsubscribeCodeShare) unsubscribeCodeShare();
+            };
+        }, [roomId, myId, db]);
+        
+        // Sync my code when sharing is enabled
+        useEffect(() => {
+            if (isCodeSharing && roomId) {
+                const syncMyCode = async () => {
+                    if (db && window.firebase) {
+                        await db.collection('battleRooms').doc(roomId).set({
+                            codeShare: {
+                                active: true,
+                                from: myId,
+                                sharedCode: player1Code,
+                                language: selectedLanguage,
+                                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                            }
+                        }, { merge: true });
+                    } else {
+                        // Update localStorage
+                        const codeData = {
+                            active: true,
+                            from: myId,
+                            sharedCode: player1Code,
+                            language: selectedLanguage,
+                            timestamp: Date.now()
+                        };
+                        localStorage.setItem('code-share-' + roomId, JSON.stringify(codeData));
+                    }
+                };
+                
+                // Debounce code updates
+                const timeoutId = setTimeout(syncMyCode, 500);
+                return () => clearTimeout(timeoutId);
+            }
+        }, [player1Code, isCodeSharing, roomId, myId, selectedLanguage, db]);
         
         // Enhanced WebRTC Signaling Listener with Firebase and localStorage fallback
         useEffect(() => {
@@ -2873,50 +3015,566 @@ User question: ${newAiMessage}`;
             };
         }, []);
 
-        // --- Mock Event Handlers ---
-        const handleRunCode = (player) => {
-            if (player === 1) {
-                setPlayer1Output("Running tests... (simulated output)");
-                setTimeout(() => {
-                    setPlayer1Output("Test 1: Passed\nTest 2: Failed (simulated error)");
-                }, 2000);
-            } else {
-                setPlayer2Output("Opponent's code running... (simulated)");
-                setTimeout(() => {
-                    setPlayer2Output("Test 1: Passed\nTest 2: Passed");
-                }, 2500);
+        // Track editor initialization to prevent duplication
+        const editorInitialized = useRef(false);
+        
+        // Initialize CodeMirror editor for battle mode (only once)
+        useEffect(() => {
+            const editorContainer = document.getElementById("battle-editor");
+            if (!editorContainer || !window.CodeMirror || editor || editorInitialized.current) return;
+
+            console.log('🔧 Initializing CodeMirror editor for battle mode...');
+            
+            const initialCode = problem.starterCode[selectedLanguage];
+            const newEditor = window.CodeMirror(editorContainer, {
+                value: initialCode,
+                mode: selectedLanguage === "javascript" ? "javascript" : 
+                      selectedLanguage === "python" ? "python" :
+                      selectedLanguage === "java" ? "text/x-java" :
+                      selectedLanguage === "cpp" ? "text/x-c++src" : "javascript",
+                theme: (function(){
+                    try { return (localStorage.getItem('theme') || 'dark') === 'dark' ? 'dracula' : 'default'; } catch(e) { return 'dracula'; }
+                })(),
+                lineNumbers: true,
+                indentUnit: 4,
+                smartIndent: true,
+            });
+
+            // Set initial code state to match editor
+            setPlayer1Code(initialCode);
+            
+            // Track changes
+            newEditor.on("change", (instance) => setPlayer1Code(instance.getValue()));
+            setEditor(newEditor);
+            editorInitialized.current = true;
+            
+            console.log('✅ CodeMirror editor initialized successfully');
+
+            return () => {
+                console.log('🧹 Cleaning up CodeMirror editor');
+                if (newEditor) {
+                    newEditor.toTextArea?.();
+                }
+                editorInitialized.current = false;
+            };
+        }, []);
+
+        // Handle language switch for battle mode (separate effect) - ONLY change mode, don't reset code
+        const lastLanguage = useRef(selectedLanguage);
+        useEffect(() => {
+            if (editor && selectedLanguage && lastLanguage.current !== selectedLanguage) {
+                console.log('🔄 Switching language from', lastLanguage.current, 'to', selectedLanguage);
+                const mode = selectedLanguage === "javascript" ? "javascript" : 
+                           selectedLanguage === "python" ? "python" :
+                           selectedLanguage === "java" ? "text/x-java" :
+                           selectedLanguage === "cpp" ? "text/x-c++src" : "javascript";
+                editor.setOption("mode", mode);
+                
+                // Only set starter code, don't append
+                const newStarterCode = problem.starterCode[selectedLanguage];
+                editor.setValue(newStarterCode); // This replaces all content
+                setPlayer1Code(newStarterCode);
+                
+                lastLanguage.current = selectedLanguage;
+                console.log('✅ Language switch completed');
             }
+        }, [selectedLanguage, editor]);
+
+        // Judge0 API integration for battle mode - Run Code
+        const handleRunCode = async (player) => {
+            if (player !== 1) return; // Only handle player 1 (current user)
+            
+            setLoading(true);
+            setPlayer1Output("Running code with Judge0...");
+
+            const languageMap = {
+                javascript: 63, // Node.js
+                python: 71,     // Python 3
+                java: 62,       // Java
+                cpp: 54,        // C++ 17
+            };
+
+            // Run with the first test case only for "Run Code"
+            const test = problem.testCases[0];
+
+            // Get function name based on problem
+            const functionName = battleProblemId == 1 ? 'twoSum' : 
+                                battleProblemId == 2 ? 'addTwoNumbers' :
+                                battleProblemId == 3 ? 'lengthOfLongestSubstring' :
+                                battleProblemId == 4 ? 'findMedianSortedArrays' :
+                                battleProblemId == 5 ? 'reverseList' : 'twoSum';
+
+            const pythonFunctionName = battleProblemId == 1 ? 'two_sum' : 
+                                      battleProblemId == 2 ? 'add_two_numbers' :
+                                      battleProblemId == 3 ? 'length_of_longest_substring' :
+                                      battleProblemId == 4 ? 'find_median_sorted_arrays' :
+                                      battleProblemId == 5 ? 'reverse_list' : 'two_sum';
+
+            const javaFunctionName = battleProblemId == 1 ? 'twoSum' : 
+                                    battleProblemId == 2 ? 'addTwoNumbers' :
+                                    battleProblemId == 3 ? 'lengthOfLongestSubstring' :
+                                    battleProblemId == 4 ? 'findMedianSortedArrays' :
+                                    battleProblemId == 5 ? 'reverseList' : 'twoSum';
+
+            const cppFunctionName = battleProblemId == 1 ? 'twoSum' : 
+                                   battleProblemId == 2 ? 'addTwoNumbers' :
+                                   battleProblemId == 3 ? 'lengthOfLongestSubstring' :
+                                   battleProblemId == 4 ? 'findMedianSortedArrays' :
+                                   battleProblemId == 5 ? 'reverseList' : 'twoSum';
+
+            // Handle different parameter structures for different problems
+            let functionCall = "";
+            
+            if (battleProblemId == 1) {
+                // Two Sum: twoSum(nums, target)
+                if (selectedLanguage === "javascript") {
+                    functionCall = `${functionName}(${JSON.stringify(test.input)}, ${test.target})`;
+                } else if (selectedLanguage === "python") {
+                    functionCall = `${pythonFunctionName}(${JSON.stringify(test.input)}, ${test.target})`;
+                } else if (selectedLanguage === "java") {
+                    functionCall = `${javaFunctionName}(new int[]{${test.input.join(',')}}, ${test.target})`;
+                } else if (selectedLanguage === "cpp") {
+                    functionCall = `${cppFunctionName}({${test.input.join(',')}}, ${test.target})`;
+                }
+            } else if (battleProblemId == 2) {
+                // Add Two Numbers: addTwoNumbers(l1, l2)
+                if (selectedLanguage === "javascript") {
+                    functionCall = `${functionName}(${JSON.stringify(test.input.l1)}, ${JSON.stringify(test.input.l2)})`;
+                } else if (selectedLanguage === "python") {
+                    functionCall = `${pythonFunctionName}(${JSON.stringify(test.input.l1)}, ${JSON.stringify(test.input.l2)})`;
+                } else if (selectedLanguage === "java") {
+                    functionCall = `${javaFunctionName}(new int[]{${test.input.l1.join(',')}}, new int[]{${test.input.l2.join(',')}})`;
+                } else if (selectedLanguage === "cpp") {
+                    functionCall = `${cppFunctionName}({${test.input.l1.join(',')}}, {${test.input.l2.join(',')}})`;
+                }
+            } else if (battleProblemId == 3) {
+                // Longest Substring: lengthOfLongestSubstring(s)
+                if (selectedLanguage === "javascript") {
+                    functionCall = `${functionName}(${JSON.stringify(test.input)})`;
+                } else if (selectedLanguage === "python") {
+                    functionCall = `${pythonFunctionName}(${JSON.stringify(test.input)})`;
+                } else if (selectedLanguage === "java") {
+                    functionCall = `${javaFunctionName}("${test.input}")`;
+                } else if (selectedLanguage === "cpp") {
+                    functionCall = `${cppFunctionName}("${test.input}")`;
+                }
+            } else if (battleProblemId == 4) {
+                // Median of Arrays: findMedianSortedArrays(nums1, nums2)
+                if (selectedLanguage === "javascript") {
+                    functionCall = `${functionName}(${JSON.stringify(test.input.nums1)}, ${JSON.stringify(test.input.nums2)})`;
+                } else if (selectedLanguage === "python") {
+                    functionCall = `${pythonFunctionName}(${JSON.stringify(test.input.nums1)}, ${JSON.stringify(test.input.nums2)})`;
+                } else if (selectedLanguage === "java") {
+                    functionCall = `${javaFunctionName}(new int[]{${test.input.nums1.join(',')}}, new int[]{${test.input.nums2.join(',')}})`;
+                } else if (selectedLanguage === "cpp") {
+                    functionCall = `${cppFunctionName}({${test.input.nums1.join(',')}}, {${test.input.nums2.join(',')}})`;
+                }
+            } else if (battleProblemId == 5) {
+                // Reverse List: reverseList(head)
+                if (selectedLanguage === "javascript") {
+                    functionCall = `${functionName}(${JSON.stringify(test.input)})`;
+                } else if (selectedLanguage === "python") {
+                    functionCall = `${pythonFunctionName}(${JSON.stringify(test.input)})`;
+                } else if (selectedLanguage === "java") {
+                    functionCall = `${javaFunctionName}(new int[]{${test.input.join(',')}})`;
+                } else if (selectedLanguage === "cpp") {
+                    functionCall = `${cppFunctionName}({${test.input.join(',')}})`;
+                }
+            }
+
+            // Fallback: if functionCall is still empty, use a default
+            if (!functionCall) {
+                if (selectedLanguage === "javascript") {
+                    functionCall = `${functionName}(${JSON.stringify(test.input)}, ${test.target})`;
+                } else if (selectedLanguage === "python") {
+                    functionCall = `${pythonFunctionName}(${JSON.stringify(test.input)}, ${test.target})`;
+                } else if (selectedLanguage === "java") {
+                    functionCall = `${javaFunctionName}(new int[]{${test.input.join(',')}}, ${test.target})`;
+                } else if (selectedLanguage === "cpp") {
+                    functionCall = `${cppFunctionName}({${test.input.join(',')}}, ${test.target})`;
+                }
+            }
+
+            // Generate wrapped code based on language
+            let wrappedCode = "";
+            if (selectedLanguage === "javascript") {
+                wrappedCode = `
+${player1Code}
+
+// Auto-call the function with test case
+console.log(JSON.stringify(${functionCall}));
+`;
+            } else if (selectedLanguage === "python") {
+                wrappedCode = `
+${player1Code}
+
+# Auto-call the function with test case
+import json
+print(json.dumps(${functionCall}))
+`;
+            } else if (selectedLanguage === "java") {
+                // For problems that return non-array types, don't use Arrays.toString()
+                const needsArraysToString = battleProblemId === 1 || battleProblemId === 2 || battleProblemId === 5; // Two Sum, Add Two Numbers, Reverse List return arrays
+                const printStatement = needsArraysToString ? `Arrays.toString(${functionCall})` : `${functionCall}`;
+                
+                wrappedCode = `
+import java.util.Arrays;
+
+public class Main {
+    public static ${player1Code.replace('public ', '').replace('double ', 'public static double ').replace('int[] ', 'public static int[] ').replace('int ', 'public static int ').replace('public static public static', 'public static')}
+    
+    public static void main(String[] args) {
+        System.out.println(${printStatement});
+    }
+}`;
+            } else if (selectedLanguage === "cpp") {
+                wrappedCode = `
+#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;
+
+${player1Code}
+
+int main() {
+    auto result = ${functionCall};
+    cout << result << endl;
+    return 0;
+}
+`;
+            }
+
+            try {
+                const res = await fetch("https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=true", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "x-rapidapi-host": "judge0-ce.p.rapidapi.com",
+                        "x-rapidapi-key": "1f4bcaf085mshdb3d102dc891ab6p12b4d2jsn3480d98ed8c1"
+                    },
+                    body: JSON.stringify({
+                        source_code: btoa(wrappedCode),
+                        language_id: languageMap[selectedLanguage],
+                        stdin: btoa(""),
+                    }),
+                });
+
+                const result = await res.json();
+                if (result.stdout) {
+                    setPlayer1Output("Output:\n" + atob(result.stdout));
+                } else if (result.stderr) {
+                    setPlayer1Output("Error:\n" + atob(result.stderr));
+                } else if (result.compile_output) {
+                    setPlayer1Output("Compilation Error:\n" + atob(result.compile_output));
+                } else {
+                    setPlayer1Output("Unexpected response:\n" + JSON.stringify(result, null, 2));
+                }
+            } catch (err) {
+                setPlayer1Output("Error calling Judge0: " + err.message);
+            }
+
+            setLoading(false);
         };
 
-        const handleSubmitCode = (player) => {
-            if (player === 1) {
-                setPlayer1Output("Submitting solution... (simulated)");
-                setPlayer1Progress(100); // Simulate completion
-                setTimeout(() => {
-                    setPlayer1Output("Submission received. Waiting for opponent...");
-                    if (player2Progress === 100) { // Both submitted
-                        setBattleStatus("Ended");
-                        setWinner('player1'); // Assume player1 wins for demo
+        // Judge0 API integration for battle mode - Submit Code
+        const handleSubmitCode = async (player) => {
+            if (player !== 1) return; // Only handle player 1 (current user)
+            
+            setLoading(true);
+            setPlayer1Output("Submitting solution via Judge0...");
+
+            const languageMap = {
+                javascript: 63, // Node.js
+                python: 71,     // Python 3
+                java: 62,       // Java
+                cpp: 54,        // C++ 17
+            };
+
+            let results = [];
+
+            for (let i = 0; i < problem.testCases.length; i++) {
+                const test = problem.testCases[i];
+
+                // Get function name based on problem
+                const functionName = battleProblemId === 1 ? 'twoSum' : 
+                                    battleProblemId === 2 ? 'addTwoNumbers' :
+                                    battleProblemId === 3 ? 'lengthOfLongestSubstring' :
+                                    battleProblemId === 4 ? 'findMedianSortedArrays' :
+                                    battleProblemId === 5 ? 'reverseList' : 'twoSum';
+
+                const pythonFunctionName = battleProblemId == 1 ? 'two_sum' : 
+                                          battleProblemId == 2 ? 'add_two_numbers' :
+                                          battleProblemId == 3 ? 'length_of_longest_substring' :
+                                          battleProblemId == 4 ? 'find_median_sorted_arrays' :
+                                          battleProblemId == 5 ? 'reverse_list' : 'two_sum';
+
+                const javaFunctionName = battleProblemId == 1 ? 'twoSum' : 
+                                        battleProblemId == 2 ? 'addTwoNumbers' :
+                                        battleProblemId == 3 ? 'lengthOfLongestSubstring' :
+                                        battleProblemId == 4 ? 'findMedianSortedArrays' :
+                                        battleProblemId == 5 ? 'reverseList' : 'twoSum';
+
+                const cppFunctionName = battleProblemId == 1 ? 'twoSum' : 
+                                       battleProblemId == 2 ? 'addTwoNumbers' :
+                                       battleProblemId == 3 ? 'lengthOfLongestSubstring' :
+                                       battleProblemId == 4 ? 'findMedianSortedArrays' :
+                                       battleProblemId == 5 ? 'reverseList' : 'twoSum';
+
+                // Handle different parameter structures for different problems
+                let functionCall = "";
+                
+                if (battleProblemId == 1) {
+                    // Two Sum: twoSum(nums, target)
+                    if (selectedLanguage === "javascript") {
+                        functionCall = `${functionName}(${JSON.stringify(test.input)}, ${test.target})`;
+                    } else if (selectedLanguage === "python") {
+                        functionCall = `${pythonFunctionName}(${JSON.stringify(test.input)}, ${test.target})`;
+                    } else if (selectedLanguage === "java") {
+                        functionCall = `${javaFunctionName}(new int[]{${test.input.join(',')}}, ${test.target})`;
+                    } else if (selectedLanguage === "cpp") {
+                        functionCall = `${cppFunctionName}({${test.input.join(',')}}, ${test.target})`;
                     }
-                }, 2000);
-            } else {
-                setPlayer2Output("Opponent submitting solution... (simulated)");
-                setPlayer2Progress(100); // Simulate completion
-                setTimeout(() => {
-                    setPlayer2Output("Opponent's submission received.");
-                    if (player1Progress === 100) { // Both submitted
-                        setBattleStatus("Ended");
-                        setWinner('player2'); // Assume player2 wins for demo
+                } else if (battleProblemId == 2) {
+                    // Add Two Numbers: addTwoNumbers(l1, l2)
+                    if (selectedLanguage === "javascript") {
+                        functionCall = `${functionName}(${JSON.stringify(test.input.l1)}, ${JSON.stringify(test.input.l2)})`;
+                    } else if (selectedLanguage === "python") {
+                        functionCall = `${pythonFunctionName}(${JSON.stringify(test.input.l1)}, ${JSON.stringify(test.input.l2)})`;
+                    } else if (selectedLanguage === "java") {
+                        functionCall = `${javaFunctionName}(new int[]{${test.input.l1.join(',')}}, new int[]{${test.input.l2.join(',')}})`;
+                    } else if (selectedLanguage === "cpp") {
+                        functionCall = `${cppFunctionName}({${test.input.l1.join(',')}}, {${test.input.l2.join(',')}})`;
                     }
-                }, 2500);
+                } else if (battleProblemId == 3) {
+                    // Longest Substring: lengthOfLongestSubstring(s)
+                    if (selectedLanguage === "javascript") {
+                        functionCall = `${functionName}(${JSON.stringify(test.input)})`;
+                    } else if (selectedLanguage === "python") {
+                        functionCall = `${pythonFunctionName}(${JSON.stringify(test.input)})`;
+                    } else if (selectedLanguage === "java") {
+                        functionCall = `${javaFunctionName}("${test.input}")`;
+                    } else if (selectedLanguage === "cpp") {
+                        functionCall = `${cppFunctionName}("${test.input}")`;
+                    }
+                } else if (battleProblemId == 4) {
+                    // Median of Arrays: findMedianSortedArrays(nums1, nums2)
+                    if (selectedLanguage === "javascript") {
+                        functionCall = `${functionName}(${JSON.stringify(test.input.nums1)}, ${JSON.stringify(test.input.nums2)})`;
+                    } else if (selectedLanguage === "python") {
+                        functionCall = `${pythonFunctionName}(${JSON.stringify(test.input.nums1)}, ${JSON.stringify(test.input.nums2)})`;
+                    } else if (selectedLanguage === "java") {
+                        functionCall = `${javaFunctionName}(new int[]{${test.input.nums1.join(',')}}, new int[]{${test.input.nums2.join(',')}})`;
+                    } else if (selectedLanguage === "cpp") {
+                        functionCall = `${cppFunctionName}({${test.input.nums1.join(',')}}, {${test.input.nums2.join(',')}})`;
+                    }
+                } else if (battleProblemId == 5) {
+                    // Reverse List: reverseList(head)
+                    if (selectedLanguage === "javascript") {
+                        functionCall = `${functionName}(${JSON.stringify(test.input)})`;
+                    } else if (selectedLanguage === "python") {
+                        functionCall = `${pythonFunctionName}(${JSON.stringify(test.input)})`;
+                    } else if (selectedLanguage === "java") {
+                        functionCall = `${javaFunctionName}(new int[]{${test.input.join(',')}})`;
+                    } else if (selectedLanguage === "cpp") {
+                        functionCall = `${cppFunctionName}({${test.input.join(',')}})`;
+                    }
+                }
+
+                // Fallback: if functionCall is still empty, use a default
+                if (!functionCall) {
+                    if (selectedLanguage === "javascript") {
+                        functionCall = `${functionName}(${JSON.stringify(test.input)}, ${test.target})`;
+                    } else if (selectedLanguage === "python") {
+                        functionCall = `${pythonFunctionName}(${JSON.stringify(test.input)}, ${test.target})`;
+                    } else if (selectedLanguage === "java") {
+                        functionCall = `${javaFunctionName}(new int[]{${test.input.join(',')}}, ${test.target})`;
+                    } else if (selectedLanguage === "cpp") {
+                        functionCall = `${cppFunctionName}({${test.input.join(',')}}, ${test.target})`;
+                    }
+                }
+
+                let wrappedCode = "";
+                if (selectedLanguage === "javascript") {
+                    wrappedCode = `
+${player1Code}
+
+// Auto-call the function with test case
+console.log(JSON.stringify(${functionCall}));
+`;
+                } else if (selectedLanguage === "python") {
+                    wrappedCode = `
+${player1Code}
+
+# Auto-call the function with test case
+import json
+print(json.dumps(${functionCall}))
+`;
+                } else if (selectedLanguage === "java") {
+                    // For problems that return non-array types, don't use Arrays.toString()
+                    const needsArraysToString = battleProblemId === 1 || battleProblemId === 2 || battleProblemId === 5; // Two Sum, Add Two Numbers, Reverse List return arrays
+                    const printStatement = needsArraysToString ? `Arrays.toString(${functionCall})` : `${functionCall}`;
+                    
+                    wrappedCode = `
+import java.util.Arrays;
+
+public class Main {
+    public static ${player1Code.replace('public ', '').replace('double ', 'public static double ').replace('int[] ', 'public static int[] ').replace('int ', 'public static int ').replace('public static public static', 'public static')}
+    
+    public static void main(String[] args) {
+        System.out.println(${printStatement});
+    }
+}`;
+                } else if (selectedLanguage === "cpp") {
+                    wrappedCode = `
+#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;
+
+${player1Code}
+
+int main() {
+    auto result = ${functionCall};
+    cout << result << endl;
+    return 0;
+}
+`;
+                }
+
+                try {
+                    const res = await fetch(
+                        "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=true",
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "x-rapidapi-host": "judge0-ce.p.rapidapi.com",
+                                "x-rapidapi-key": "1f4bcaf085mshdb3d102dc891ab6p12b4d2jsn3480d98ed8c1"
+                            },
+                            body: JSON.stringify({
+                                source_code: btoa(wrappedCode),
+                                language_id: languageMap[selectedLanguage],
+                                stdin: btoa(""),
+                            }),
+                        }
+                    );
+
+                    const result = await res.json();
+
+                    let verdict = "Wrong Answer";
+                    if (result.stdout) {
+                        const userOutput = JSON.parse(atob(result.stdout).trim());
+                        verdict =
+                            JSON.stringify(userOutput) === JSON.stringify(test.expected)
+                                ? "Passed"
+                                : `Failed (Expected ${JSON.stringify(test.expected)}, Got ${JSON.stringify(userOutput)})`;
+                    } else if (result.stderr) {
+                        verdict = "Runtime Error: " + atob(result.stderr);
+                    } else if (result.compile_output) {
+                        verdict = "Compilation Error: " + atob(result.compile_output);
+                    }
+
+                    results.push(`Test Case ${i + 1}: ${verdict}`);
+                } catch (err) {
+                    results.push(`Test Case ${i + 1}: Error - ${err.message}`);
+                }
             }
+
+            const passedTests = results.filter(r => r.includes('Passed')).length;
+            const totalTests = problem.testCases.length;
+            const progressPercent = Math.round((passedTests / totalTests) * 100);
+            
+            setPlayer1Progress(progressPercent);
+            setPlayer1Output(results.join("\n"));
+            
+            // Check if all tests passed for completion
+            if (passedTests === totalTests) {
+                setPlayer1Output(prev => prev + "\n\n✅ All tests passed! Solution submitted successfully.");
+                if (player2Progress === 100) { // Both completed
+                    setBattleStatus("Ended");
+                    setWinner('player1'); // Winner determination logic can be enhanced
+                }
+            }
+            
+            setLoading(false);
         };
 
         const handleSendChatMessage = () => {
+            console.log('💬 Attempting to send chat message:', newChatMessage);
+            console.log('💬 Current chat messages count:', chatMessages.length);
+            console.log('💬 Current user ID:', userId || myId || "Guest");
+            
             if (newChatMessage.trim()) {
-                const sender = userId || "Guest";
-                setChatMessages((prev) => [...prev, { sender: sender, text: newChatMessage, timestamp: new Date() }]);
+                const sender = userId || myId || "Guest";
+                const message = {
+                    id: Date.now() + Math.random(), // Unique ID
+                    sender: sender,
+                    text: newChatMessage.trim(),
+                    timestamp: new Date()
+                };
+                
+                console.log('💬 Sending message:', message);
+                setChatMessages((prev) => {
+                    const updated = [...prev, message];
+                    console.log('💬 Updated chat messages:', updated);
+                    
+                    // Save to localStorage
+                    try {
+                        localStorage.setItem(`battle-chat-${roomId || 'local'}`, JSON.stringify(updated));
+                        console.log('📋 Saved chat messages to localStorage');
+                    } catch (e) {
+                        console.warn('⚠️ Could not save chat messages:', e);
+                    }
+                    
+                    return updated;
+                });
                 setNewChatMessage('');
+                
+                // Auto-scroll to bottom after sending message
+                setTimeout(() => {
+                    if (chatEndRef.current) {
+                        chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+                    }
+                }, 100);
+            } else {
+                console.log('⚠️ Empty message, not sending');
+            }
+        };
+        
+        // Auto-scroll chat to bottom when new messages arrive
+        useEffect(() => {
+            console.log('📜 Chat messages updated, count:', chatMessages.length);
+            console.log('📜 Messages:', chatMessages.map(m => `${m.sender}: ${m.text}`));
+            if (chatEndRef.current) {
+                chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+            }
+        }, [chatMessages]);
+        
+        // Clear chat messages when room changes
+        useEffect(() => {
+            if (roomId) {
+                try {
+                    const saved = localStorage.getItem(`battle-chat-${roomId}`);
+                    if (saved) {
+                        const messages = JSON.parse(saved);
+                        setChatMessages(messages);
+                        console.log('📜 Loaded', messages.length, 'saved chat messages for room', roomId);
+                    } else {
+                        setChatMessages([]);
+                        console.log('📜 No saved messages for room', roomId);
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Could not load chat messages for room', roomId, ':', e);
+                    setChatMessages([]);
+                }
+            }
+        }, [roomId]);
+        
+        // Handle Enter key press for chat
+        const handleChatKeyPress = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSendChatMessage();
             }
         };
 
@@ -3429,149 +4087,74 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
             }
         };
         
-        const startScreenShare = async () => {
+        const startCodeSharing = async () => {
             try {
-                console.log('📺 Starting screen sharing...');
+                console.log('💻 Starting code sharing...');
                 setIsConnecting(true);
                 
-                // Check if getDisplayMedia is supported
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-                    throw new Error('Screen sharing is not supported in this browser');
-                }
+                // Enable code sharing
+                setIsCodeSharing(true);
+                console.log('✅ Code sharing enabled!');
                 
-                console.log('🖥️ Requesting screen capture access...');
-                const stream = await navigator.mediaDevices.getDisplayMedia({ 
-                    video: {
-                        width: { ideal: 1920, min: 640, max: 3840 },
-                        height: { ideal: 1080, min: 480, max: 2160 },
-                        frameRate: { ideal: 30, min: 15, max: 60 }
-                    }, 
-                    audio: true  // Simplified audio constraint
-                });
-                
-                console.log('✅ Screen capture access granted, stream:', stream);
-                console.log('📹 Video tracks:', stream.getVideoTracks().length);
-                console.log('🔊 Audio tracks:', stream.getAudioTracks().length);
-                
-                // Detailed track analysis
-                const videoTracks = stream.getVideoTracks();
-                if (videoTracks.length > 0) {
-                    const track = videoTracks[0];
-                    const settings = track.getSettings();
-                    const constraints = track.getConstraints();
-                    
-                    console.log('📺 VIDEO TRACK ANALYSIS:');
-                    console.log('  - Label:', track.label);
-                    console.log('  - State:', track.readyState);
-                    console.log('  - Enabled:', track.enabled);
-                    console.log('  - Settings:', settings);
-                    console.log('  - Constraints:', constraints);
-                    
-                    if (settings.width && settings.height) {
-                        console.log(`  - ✅ GOOD: Track has dimensions: ${settings.width} x ${settings.height}`);
-                    } else {
-                        console.error('  - ❌ BAD: Track has no dimensions!');
-                    }
-                    
-                    if (settings.frameRate && settings.frameRate > 0) {
-                        console.log(`  - ✅ GOOD: Frame rate: ${settings.frameRate} fps`);
-                    } else {
-                        console.error(`  - ❌ BAD: Invalid frame rate: ${settings.frameRate}`);
-                    }
-                } else {
-                    console.error('❌ CRITICAL: No video tracks in screen capture stream!');
-                }
-                
-                setLocalScreenStream(stream);
-                
-                const pc = initializeScreenPeerConnection();
-                console.log('🔗 Adding screen sharing tracks to screen peer connection...');
-                stream.getTracks().forEach(track => {
-                    console.log('➕ Adding track:', track.kind, track.label);
-                    pc.addTrack(track, stream);
-                });
-                
-                setIsScreenSharing(true);
-                console.log('✅ Screen sharing enabled!');
-                
-                // Handle stream end (user stops sharing)
-                const videoTrack = stream.getVideoTracks()[0];
-                if (videoTrack) {
-                    videoTrack.onended = () => {
-                        console.log('🛑 Screen sharing ended by user');
-                        stopScreenShare();
-                    };
-                }
-                
-                // Create offer for screen sharing
+                // Send code sharing notification
                 if (roomId) {
-                    console.log('📤 Creating screen sharing offer...');
-                    const offer = await pc.createOffer();
-                    await pc.setLocalDescription(offer);
-                    
                     if (db && window.firebase) {
                         await db.collection('battleRooms').doc(roomId).set({
-                            screenShare: { 
-                                offer: { sdp: offer.sdp, type: offer.type }, 
-                                from: myId, 
+                            codeShare: { 
                                 active: true,
+                                from: myId,
+                                sharedCode: player1Code,
+                                language: selectedLanguage,
                                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
                             }
                         }, { merge: true });
-                        console.log('✅ Screen sharing offer sent via Firebase');
+                        console.log('✅ Code sharing enabled via Firebase');
                     } else {
                         // Fallback to localStorage for local testing
-                        const signals = { 
-                            offer: { sdp: offer.sdp, type: offer.type }, 
+                        const codeData = { 
+                            active: true,
                             from: myId, 
-                            type: 'screenShare' 
+                            sharedCode: player1Code,
+                            language: selectedLanguage,
+                            timestamp: Date.now()
                         };
-                        localStorage.setItem('screen-share-signals-' + roomId, JSON.stringify(signals));
-                        console.log('✅ Screen sharing offer sent via localStorage');
+                        localStorage.setItem('code-share-' + roomId, JSON.stringify(codeData));
+                        console.log('✅ Code sharing enabled via localStorage');
                     }
                 } else {
-                    console.warn('⚠️ No room ID available for screen sharing');
+                    console.warn('⚠️ No room ID available for code sharing');
                 }
                 
             } catch (error) {
-                console.error('❌ Error starting screen share:', error);
-                
-                let errorMessage = 'Could not start screen sharing. ';
-                if (error.name === 'NotAllowedError') {
-                    errorMessage += 'Please allow screen sharing permissions and try again.';
-                } else if (error.name === 'NotSupportedError') {
-                    errorMessage += 'Screen sharing is not supported in this browser.';
-                } else if (error.name === 'AbortError') {
-                    errorMessage += 'Screen sharing was cancelled by user.';
-                } else {
-                    errorMessage += 'Error: ' + error.message;
-                }
-                
-                alert(errorMessage);
-                console.error('Full error details:', error);
+                console.error('❌ Error starting code share:', error);
+                alert('Could not start code sharing: ' + error.message);
             } finally {
                 setIsConnecting(false);
             }
         };
         
-        const stopScreenShare = () => {
-            if (localScreenStream) {
-                localScreenStream.getTracks().forEach(track => track.stop());
-                setLocalScreenStream(null);
-            }
-            setIsScreenSharing(false);
+        const stopCodeSharing = () => {
+            setIsCodeSharing(false);
             
-            // Notify room that screen sharing stopped
-            if (roomId && db) {
-                db.collection('battleRooms').doc(roomId).set({
-                    screenShare: { 
-                        active: false, 
-                        from: myId,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    }
-                }, { merge: true });
-                console.log('✅ Screen sharing stopped notification sent');
+            // Notify room that code sharing stopped
+            if (roomId) {
+                if (db && window.firebase) {
+                    db.collection('battleRooms').doc(roomId).set({
+                        codeShare: { 
+                            active: false, 
+                            from: myId,
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        }
+                    }, { merge: true });
+                    console.log('✅ Code sharing stopped via Firebase');
+                } else {
+                    // Clear localStorage for local testing
+                    localStorage.removeItem('code-share-' + roomId);
+                    console.log('✅ Code sharing stopped via localStorage');
+                }
             }
+            
+            console.log('✅ Code sharing disabled');
         };
         
         // Enhanced WebRTC Signal Handlers with separate peer connections
@@ -3685,162 +4268,182 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
         return (
             <div className="min-h-screen bg-gray-900 text-gray-100 font-inter p-4 flex flex-col items-center">
                  {/* Header */}
-                 <nav className="fixed top-0 left-0 w-full bg-gray-800 text-gray-100 p-4 shadow-lg flex justify-between items-center z-40">
-                    <div className="flex items-center">
-                        <h1 className="text-xl font-bold ml-4 text-indigo-400">Codera Battle Room</h1>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                        <div className="text-xl font-medium text-orange-400">
+                 <nav className="fixed top-0 left-0 w-full bg-gray-800 text-gray-100 shadow-lg z-50">
+                    {/* Main header bar */}
+                    <div className="flex justify-between items-center p-4 min-h-[64px]">
+                        <div className="flex items-center">
+                            <h1 className="text-xl font-bold ml-4 text-indigo-400">Codera Battle Room</h1>
+                        </div>
+                        
+                        {/* Timer - Always visible */}
+                        <div className="text-lg sm:text-xl font-medium text-orange-400 mx-4">
                             Time Left: <span className="font-bold">{formatTime(timer)}</span>
                         </div>
-                        {/* Enhanced Room Sharing */}
-                        <div className="flex items-center space-x-2">
-                            <button
-                                onClick={() => { 
-                                    // Create proper invite URL
-                                    const baseUrl = window.location.href.split('?')[0].split('#')[0];
-                                    const inviteUrl = baseUrl + '#/battle/room?id=' + roomId;
-                                    
-                                    navigator.clipboard.writeText(inviteUrl).then(() => {
-                                        // Show success message
-                                        const btn = document.querySelector('[data-copy-btn]');
-                                        const originalText = btn.textContent;
-                                        btn.textContent = '✅ Copied!';
-                                        btn.classList.remove('bg-blue-600');
-                                        btn.classList.add('bg-green-600');
-                                        setTimeout(() => {
-                                            btn.textContent = originalText;
-                                            btn.classList.remove('bg-green-600');
-                                            btn.classList.add('bg-blue-600');
-                                        }, 2000);
-                                        
-                                        console.log('🔗 Invite URL copied to clipboard:', inviteUrl);
-                                    }).catch(() => {
-                                        // Fallback: show prompt with URL
-                                        prompt('Copy this URL to share the battle room:', inviteUrl);
-                                        console.log('🔗 Share this URL:', inviteUrl);
-                                    });
-                                }}
-                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-md transition duration-200 flex items-center"
-                                data-copy-btn
-                                title="Copy room URL to share with friends"
-                            >
-                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                                </svg>
-                                Share Room
-                            </button>
-                            
-                            {/* Room ID Display */}
-                            <div className="text-sm text-gray-300 bg-gray-700 px-3 py-1 rounded border border-gray-600">
-                                <span className="font-mono text-yellow-400 select-all" title="Room ID - click to select">{roomId || 'Creating...'}</span>
-                            </div>
-                        </div>
                         
-                        {/* Voice Chat Controls */}
-                        {!isVoiceChatEnabled ? (
-                            <button 
-                                onClick={startVoiceChat} 
-                                disabled={isConnecting}
-                                className="p-2 rounded-md bg-green-600 hover:bg-green-700 disabled:bg-gray-600 transition duration-200" 
-                                aria-label="Start voice chat"
-                                title="Start Voice Chat"
-                            >
-                                {isConnecting ? (
-                                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                ) : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 1v6m0 0l4-4m-4 4L8 3m8 8a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                )}
-                            </button>
-                        ) : (
-                            <>
-                                {/* Mute/Unmute Button */}
-                                <button 
-                                    onClick={toggleMute} 
-                                    className={`p-2 rounded-md transition duration-200 ${
-                                        isMuted ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
-                                    }`}
-                                    aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
-                                    title={isMuted ? 'Unmute' : 'Mute'}
+                        {/* Control buttons - Responsive layout */}
+                        <div className="flex items-center space-x-2 overflow-x-auto">
+                            {/* Enhanced Room Sharing */}
+                            <div className="flex items-center space-x-2 flex-shrink-0">
+                                <button
+                                    onClick={() => { 
+                                        // Create proper invite URL
+                                        const baseUrl = window.location.href.split('?')[0].split('#')[0];
+                                        const inviteUrl = baseUrl + '#/battle/room?id=' + roomId;
+                                        
+                                        navigator.clipboard.writeText(inviteUrl).then(() => {
+                                            // Show success message
+                                            const btn = document.querySelector('[data-copy-btn]');
+                                            const originalText = btn.textContent;
+                                            btn.textContent = '✅ Copied!';
+                                            btn.classList.remove('bg-blue-600');
+                                            btn.classList.add('bg-green-600');
+                                            setTimeout(() => {
+                                                btn.textContent = originalText;
+                                                btn.classList.remove('bg-green-600');
+                                                btn.classList.add('bg-blue-600');
+                                            }, 2000);
+                                            
+                                            console.log('🔗 Invite URL copied to clipboard:', inviteUrl);
+                                        }).catch(() => {
+                                            // Fallback: show prompt with URL
+                                            prompt('Copy this URL to share the battle room:', inviteUrl);
+                                            console.log('🔗 Share this URL:', inviteUrl);
+                                        });
+                                    }}
+                                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-md transition duration-200 flex items-center whitespace-nowrap"
+                                    data-copy-btn
+                                    title="Copy room URL to share with friends"
                                 >
-                                    {isMuted ? (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                                        </svg>
-                                    ) : (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                                        </svg>
-                                    )}
+                                    <svg className="w-4 h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                                    </svg>
+                                    <span className="hidden sm:inline">Share Room</span>
+                                    <span className="sm:hidden">Share</span>
                                 </button>
                                 
-                                {/* Stop Voice Chat Button */}
-                                <button 
-                                    onClick={stopVoiceChat} 
-                                    className="p-2 rounded-md bg-red-600 hover:bg-red-700 transition duration-200" 
-                                    aria-label="Stop voice chat"
-                                    title="End Voice Chat"
+                                {/* Room ID Display */}
+                                <div className="text-xs sm:text-sm text-gray-300 bg-gray-700 px-2 sm:px-3 py-1 rounded border border-gray-600 max-w-[120px] sm:max-w-none">
+                                    <span className="font-mono text-yellow-400 select-all truncate" title="Room ID - click to select">{roomId || 'Creating...'}</span>
+                                </div>
+                            </div>
+                            
+                            {/* Voice Chat Controls */}
+                            <div className="flex items-center space-x-1 flex-shrink-0">
+                                {!isVoiceChatEnabled ? (
+                                    <button 
+                                        onClick={startVoiceChat} 
+                                        disabled={isConnecting}
+                                        className="p-2 rounded-md bg-green-600 hover:bg-green-700 disabled:bg-gray-600 transition duration-200" 
+                                        aria-label="Start voice chat"
+                                        title="Start Voice Chat"
+                                    >
+                                        {isConnecting ? (
+                                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        ) : (
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                            </svg>
+                                        )}
+                                    </button>
+                                ) : (
+                                    <>
+                                        {/* Mute/Unmute Button */}
+                                        <button 
+                                            onClick={toggleMute} 
+                                            className={`p-2 rounded-md transition duration-200 ${
+                                                isMuted ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
+                                            }`}
+                                            aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+                                            title={isMuted ? 'Unmute' : 'Mute'}
+                                        >
+                                            {isMuted ? (
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                                                </svg>
+                                            ) : (
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                                </svg>
+                                            )}
+                                        </button>
+                                        
+                                        {/* Stop Voice Chat Button */}
+                                        <button 
+                                            onClick={stopVoiceChat} 
+                                            className="p-2 rounded-md bg-red-600 hover:bg-red-700 transition duration-200" 
+                                            aria-label="Stop voice chat"
+                                            title="End Voice Chat"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 3l18 18" />
+                                            </svg>
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                            
+                            {/* Code Share Controls */}
+                            <div className="flex items-center flex-shrink-0">
+                                {!isCodeSharing ? (
+                                    <button 
+                                        onClick={startCodeSharing} 
+                                        disabled={isConnecting}
+                                        className="p-2 rounded-md bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 transition duration-200" 
+                                        aria-label="Start code sharing"
+                                        title="Share Your Code"
+                                    >
+                                        {isConnecting ? (
+                                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        ) : (
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                                            </svg>
+                                        )}
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={stopCodeSharing} 
+                                        className="p-2 rounded-md bg-red-600 hover:bg-red-700 transition duration-200" 
+                                        aria-label="Stop code sharing"
+                                        title="Stop Code Share"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636 5.636 18.364" />
+                                        </svg>
+                                    </button>
+                                )}
+                            </div>
+                            
+                            {/* Diagnostic and Exit Controls */}
+                            <div className="flex items-center space-x-1 flex-shrink-0">
+                                {/* WebRTC Diagnostic Button */}
+                                <button
+                                    onClick={runWebRTCDiagnostic}
+                                    className="p-2 rounded-md bg-yellow-600 hover:bg-yellow-700 transition duration-200" 
+                                    aria-label="Run WebRTC diagnostic"
+                                    title="Test WebRTC Support & Connectivity"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 3l18 18" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </button>
-                            </>
-                        )}
-                        
-                        {/* Screen Share Controls */}
-                        {!isScreenSharing ? (
-                            <button 
-                                onClick={startScreenShare} 
-                                disabled={isConnecting}
-                                className="p-2 rounded-md bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 transition duration-200" 
-                                aria-label="Start screen sharing"
-                                title="Share Screen"
-                            >
-                                {isConnecting ? (
-                                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                ) : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                    </svg>
-                                )}
-                            </button>
-                        ) : (
-                        <button
-                            onClick={stopScreenShare} 
-                            className="p-2 rounded-md bg-red-600 hover:bg-red-700 transition duration-200" 
-                            aria-label="Stop screen sharing"
-                            title="Stop Screen Share"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636 5.636 18.364" />
-                            </svg>
-                        </button>
-                        )}
-                        {/* WebRTC Diagnostic Button */}
-                        <button
-                            onClick={runWebRTCDiagnostic}
-                            className="p-2 rounded-md bg-yellow-600 hover:bg-yellow-700 transition duration-200" 
-                            aria-label="Run WebRTC diagnostic"
-                            title="Test WebRTC Support & Connectivity"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </button>
-                        
-                        <button onClick={() => navigateTo('/battle')} className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md shadow-md transition duration-200">
-                            Exit Battle
-                        </button>
+                                
+                                <button 
+                                    onClick={() => navigateTo('/battle')} 
+                                    className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm rounded-md shadow-md transition duration-200 whitespace-nowrap"
+                                >
+                                    <span className="hidden sm:inline">Exit Battle</span>
+                                    <span className="sm:hidden">Exit</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </nav>
 
@@ -3927,38 +4530,83 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                     <section className="lg:col-span-2 grid grid-cols-1 gap-4">
                         {/* Player Editor */}
                         <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col">
-                            <h2 className="text-xl font-semibold text-white mb-3 border-b border-gray-600 pb-2">Your Code</h2>
-                            {/* In a real app, this would be the Monaco Editor */}
-                            <textarea
-                                className="flex-grow bg-gray-700 text-gray-200 p-3 rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3 resize-none"
-                                value={player1Code}
-                                onChange={(e) => setPlayer1Code(e.target.value)}
-                                rows="15"
-                                placeholder="// Start coding here..."
-                                aria-label="Your code editor"
-                                disabled={battleStatus === "Ended"}
-                            ></textarea>
+                            <div className="flex items-center justify-between mb-3 border-b border-gray-600 pb-2">
+                                <h2 className="text-xl font-semibold text-white">Your Code</h2>
+                                {/* Language Selector */}
+                                <select
+                                    value={selectedLanguage}
+                                    onChange={(e) => setSelectedLanguage(e.target.value)}
+                                    className="bg-gray-700 text-gray-100 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-600"
+                                    disabled={battleStatus === "Ended"}
+                                >
+                                    <option value="javascript">JavaScript</option>
+                                    <option value="python">Python</option>
+                                    <option value="java">Java</option>
+                                    <option value="cpp">C++</option>
+                                </select>
+                            </div>
+                            
+                            {/* CodeMirror Editor Container */}
+                            <div 
+                                id="battle-editor" 
+                                className="flex-grow mb-3 border border-gray-600 rounded-md overflow-hidden"
+                                style={{ minHeight: '350px' }}
+                            ></div>
+                            
                             <div className="flex justify-end gap-2 mb-3">
                                 <button
                                     onClick={() => handleRunCode(1)}
                                     className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-md transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    disabled={battleStatus === "Ended"}
+                                    disabled={battleStatus === "Ended" || loading}
                                 >
-                                    Run
+                                    {loading ? 'Running...' : 'Run Code'}
                                 </button>
                                 <button
                                     onClick={() => handleSubmitCode(1)}
                                     className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md shadow-md transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500"
-                                    disabled={battleStatus === "Ended"}
+                                    disabled={battleStatus === "Ended" || loading}
                                 >
                                     Submit
                                 </button>
                             </div>
                             <div className="bg-gray-700 p-3 rounded-md text-gray-200 text-sm min-h-[80px] overflow-auto">
                                 <h3 className="font-medium text-white mb-1">Output:</h3>
-                                <pre>{player1Output}</pre>
+                                <pre className="whitespace-pre-wrap">{player1Output}</pre>
                             </div>
                         </div>
+                        
+                        {/* Friend's Code Viewer - Only show when friend is sharing code */}
+                        {isViewingFriendCode && friendCode && (
+                            <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col border-2 border-purple-500">
+                                <div className="flex items-center justify-between mb-3 border-b border-gray-600 pb-2">
+                                    <h2 className="text-xl font-semibold text-purple-400 flex items-center">
+                                        <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                        </svg>
+                                        Friend's Code (Live)
+                                    </h2>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="px-2 py-1 bg-purple-600 text-white text-xs rounded-full animate-pulse">
+                                            Live
+                                        </span>
+                                        <span className="text-xs text-gray-400">
+                                            Auto-synced
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                {/* Friend's Code Display */}
+                                <div className="flex-grow bg-gray-900 p-3 rounded-md text-gray-200 text-sm font-mono overflow-auto max-h-[400px] border border-purple-500">
+                                    <pre className="whitespace-pre-wrap">{friendCode || '// Waiting for friend to share code...'}</pre>
+                                </div>
+                                
+                                {/* Code info */}
+                                <div className="mt-2 text-xs text-gray-400 flex items-center justify-between">
+                                    <span>Read-only view • Updates in real-time</span>
+                                    <span>Lines: {friendCode.split('\n').length || 0}</span>
+                                </div>
+                            </div>
+                        )}
                     </section>
                 </main>
 
@@ -3986,7 +4634,7 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                                 type="text"
                                 value={newChatMessage}
                                 onChange={(e) => setNewChatMessage(e.target.value)}
-                                onKeyPress={(e) => { if (e.key === 'Enter') handleSendChatMessage(); }}
+                                onKeyDown={handleChatKeyPress}
                                 className="flex-grow bg-gray-700 text-gray-200 p-2 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 placeholder="Type your message..."
                                 aria-label="Chat input field"
@@ -3994,7 +4642,7 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                             <button
                                 onClick={handleSendChatMessage}
                                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-r-md transition duration-200"
-                                aria-label="Send message to AI assistant"
+                                aria-label="Send chat message"
                             >
                                 Send
                             </button>
@@ -4020,9 +4668,16 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                             </div>
                             
                             <div className="flex items-center justify-between">
-                                <span className="font-bold text-blue-400">Screen Share:</span>
-                                <span className={`px-2 py-1 rounded text-sm ${isScreenSharing ? 'bg-green-600' : 'bg-gray-600'}`}>
-                                    {isScreenSharing ? 'Sharing' : 'Not Sharing'}
+                                <span className="font-bold text-purple-400">Code Share:</span>
+                                <span className={`px-2 py-1 rounded text-sm ${isCodeSharing ? 'bg-green-600' : 'bg-gray-600'}`}>
+                                    {isCodeSharing ? 'Sharing' : 'Not Sharing'}
+                                </span>
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                                <span className="font-bold text-blue-400">Viewing Friend's Code:</span>
+                                <span className={`px-2 py-1 rounded text-sm ${isViewingFriendCode ? 'bg-green-600' : 'bg-gray-600'}`}>
+                                    {isViewingFriendCode ? 'Active' : 'Not Available'}
                                 </span>
                             </div>
                             
@@ -4034,45 +4689,27 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                                         {voicePeerConnection ? voicePeerConnection.connectionState || 'Connecting...' : 'Not Connected'}
                                     </span>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="font-bold text-blue-400">Screen Connection:</span>
-                                    <span className={`px-2 py-1 rounded text-sm ${screenPeerConnection && screenPeerConnection.connectionState === 'connected' ? 'bg-green-600' : 'bg-red-600'}`}>
-                                        {screenPeerConnection ? screenPeerConnection.connectionState || 'Connecting...' : 'Not Connected'}
-                                    </span>
-                                </div>
                             </div>
                             
-                            {/* Remote Screen Display */}
-                            <div className="mt-4">
-                                <h3 className="text-sm font-semibold text-white mb-2">
-                                    Friend's Screen: 
-                                    <span className={`ml-2 px-2 py-1 text-xs rounded ${
-                                        remoteScreenStream ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
-                                    }`}>
-                                        {remoteScreenStream ? 'Stream Active' : 'No Stream'}
-                                    </span>
-                                </h3>
-                                <video 
-                                    ref={remoteScreenRef}
-                                    autoPlay 
-                                    playsInline 
-                                    muted={false}
-                                    controls
-                                    className="w-full h-32 bg-black rounded border border-gray-500"
-                                    style={{display: 'block'}}
-                                    onLoadStart={() => console.log('📺 Video loadstart event')}
-                                    onLoadedData={() => console.log('📺 Video loadeddata event')}
-                                    onCanPlay={() => console.log('📺 Video canplay event')}
-                                    onPlaying={() => console.log('📺 Video playing event')}
-                                    onWaiting={() => console.log('📺 Video waiting event')}
-                                    onError={(e) => console.error('❌ Video error event:', e)}
-                                />
-                                <div className="text-xs text-gray-400 mt-1">
-                                    Stream ID: {remoteScreenStream?.id || 'None'} | 
-                                    Active: {remoteScreenStream?.active ? 'Yes' : 'No'} | 
-                                    Video Tracks: {remoteScreenStream?.getVideoTracks()?.length || 0}
+                            {/* Friend's Code Status */}
+                            {isViewingFriendCode && (
+                                <div className="mt-4 p-3 bg-gray-800 rounded border border-purple-500">
+                                    <h3 className="text-sm font-semibold text-white mb-2 flex items-center">
+                                        <svg className="w-4 h-4 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V8zm0 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2z" clipRule="evenodd" />
+                                        </svg>
+                                        Friend's Code:
+                                        <span className="ml-2 px-2 py-1 text-xs rounded bg-green-600 text-white animate-pulse">
+                                            Live
+                                        </span>
+                                    </h3>
+                                    <div className="text-xs text-gray-400 space-y-1">
+                                        <div>Status: Receiving real-time updates</div>
+                                        <div>Lines: {friendCode.split('\n').length || 0}</div>
+                                        <div>Characters: {friendCode.length || 0}</div>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                             
                             {/* Participants Count */}
                             <div className="mt-2 text-sm text-gray-400">
@@ -4113,8 +4750,6 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                     </div>
                 </div>
                 
-                {/* CodeMirror Editor Container (replaces textarea) */}
-                <div id="battle-editor" style={{display: 'none'}}></div>
             </div>
         );
     };
