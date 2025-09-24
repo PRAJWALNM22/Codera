@@ -35,6 +35,9 @@
         window.onAuthStateChanged = window.onAuthStateChanged || function(auth, handler) { return auth.onAuthStateChanged(handler); };
         window.signOut = window.signOut || function(auth) { return auth.signOut(); };
         window.signInWithEmailAndPassword = window.signInWithEmailAndPassword || function(auth, email, password) { return auth.signInWithEmailAndPassword(email, password); };
+        window.GoogleAuthProvider = window.GoogleAuthProvider || function() { return new firebase.auth.GoogleAuthProvider(); };
+        window.signInWithPopup = window.signInWithPopup || function(auth, provider) { return auth.signInWithPopup(provider); };
+        window.createUserWithEmailAndPassword = window.createUserWithEmailAndPassword || function(auth, email, password) { return auth.createUserWithEmailAndPassword(email, password); };
     </script>
     <style>
         body {
@@ -186,30 +189,22 @@
                         if (user) {
                             setUserId(user.uid);
                             setIsAuthenticated(true);
-                            console.log('User authenticated:', user.uid);
+                            console.log('User authenticated:', user.uid, user.email);
                         } else {
-                            // Sign in anonymously for battle rooms
-                            firebaseAuth.signInAnonymously().then((result) => {
-                                setUserId(result.user.uid);
-                                setIsAuthenticated(true);
-                                console.log('Anonymous user created:', result.user.uid);
-                            }).catch((error) => {
-                                console.error('Anonymous authentication failed:', error);
-                                // Fallback to demo mode
-                                setUserId('demo-user-' + Math.random().toString(36).substr(2, 9));
-                                setIsAuthenticated(true);
-                            });
+                            setUserId(null);
+                            setIsAuthenticated(false);
+                            console.log('User not authenticated');
                         }
                         setIsAuthReady(true);
                     });
                     
                 } else {
-                    console.log('Firebase config not provided, running in local demo mode');
-                    console.log('To enable global communication, add your Firebase config above.');
+                    console.log('Firebase config not provided, authentication required');
+                    console.log('To enable authentication, add your Firebase config above.');
                     
-                    // Set up mock authentication for local testing
-                    setUserId('demo-user-' + Math.random().toString(36).substr(2, 9));
-                    setIsAuthenticated(true);
+                    // No authentication without Firebase
+                    setUserId(null);
+                    setIsAuthenticated(false);
                     setIsAuthReady(true);
                 }
                 
@@ -221,9 +216,9 @@
                 
             } catch (error) {
                 console.error("Error in Firebase initialization:", error);
-                // Fallback to demo mode
-                setUserId('demo-user-' + Math.random().toString(36).substr(2, 9));
-                setIsAuthenticated(true);
+                // No fallback - require proper authentication
+                setUserId(null);
+                setIsAuthenticated(false);
                 setIsAuthReady(true);
             }
         }, [currentPage]);
@@ -232,7 +227,7 @@
         useEffect(() => {
             console.log('Setting up authentication redirect logic...');
             if (isAuthReady) {
-                // Skip login if already authenticated (anonymous auth works)
+                // Redirect to home if already authenticated and on login page
                 if (isAuthenticated && (currentPage === '/' || currentPage === '/login')) {
                     console.log('User authenticated, redirecting to home');
                     try {
@@ -249,8 +244,23 @@
                         window.location.hash = '/home';
                     }
                 }
-                // For now, don't force login redirect - let users navigate freely
-                // This allows testing without login
+                // Redirect to login if not authenticated and trying to access protected pages
+                else if (!isAuthenticated && currentPage !== '/login' && currentPage !== '/') {
+                    console.log('User not authenticated, redirecting to login');
+                    try {
+                        if (window.location.protocol === 'file:') {
+                            setCurrentPage('/login');
+                            window.location.hash = '/login';
+                        } else {
+                            setCurrentPage('/login');
+                            window.history.pushState({}, '', '#/login');
+                        }
+                    } catch (error) {
+                        console.log('Using hash routing fallback for login redirect');
+                        setCurrentPage('/login');
+                        window.location.hash = '/login';
+                    }
+                }
             }
         }, [isAuthReady, isAuthenticated, currentPage]);
 
@@ -349,9 +359,11 @@
                 case '/login':
                     return isAuthenticated ? <HomePage username="CodeMaster" navigateTo={navigateTo} /> : <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
                 case '/home':
-                    return isAuthenticated ? <HomePage username="CodeMaster" navigateTo={navigateTo} /> : <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
+                    if (!isAuthenticated) return <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
+                    return <HomePage username="CodeMaster" navigateTo={navigateTo} />;
                 case '/practice':
-                    return isAuthenticated ? (id ? <PracticeProblemPage problemId={id} /> : <PracticeListPage navigateTo={navigateTo} />) : <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
+                    if (!isAuthenticated) return <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
+                    return id ? <PracticeProblemPage problemId={id} /> : <PracticeListPage navigateTo={navigateTo} />;
                 case '/battle':
                      if (!isAuthenticated) return <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
                      if (subRoute === 'random') return <BattleRandomPage navigateTo={navigateTo} />;
@@ -359,13 +371,16 @@
                      if (subRoute === 'room') return <BattleRoomPage navigateTo={navigateTo} userId={userId} db={db} />;
                      return <BattleOverviewPage navigateTo={navigateTo} />;
                 case '/leaderboard':
-                    return isAuthenticated ? <LeaderboardPage navigateTo={navigateTo} /> : <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
+                    if (!isAuthenticated) return <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
+                    return <LeaderboardPage navigateTo={navigateTo} />;
                 case '/friends':
-                    return isAuthenticated ? <FriendsPage navigateTo={navigateTo} /> : <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
+                    if (!isAuthenticated) return <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
+                    return <FriendsPage navigateTo={navigateTo} />;
                 case '/profile':
-                    return isAuthenticated ? <ProfilePage navigateTo={navigateTo} profileId={id} /> : <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
+                    if (!isAuthenticated) return <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
+                    return <ProfilePage navigateTo={navigateTo} profileId={id} />;
                 default:
-                    // Default to home if authenticated, else login
+                    // Default to login page for unauthenticated users
                     return isAuthenticated ? <HomePage username="CodeMaster" navigateTo={navigateTo} /> : <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
             }
         };
@@ -378,7 +393,7 @@
                         <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={setIsSidebarOpen} navigateTo={navigateTo} currentPage={currentPage} />
                     </>
                 )}
-                <div className={`flex-grow ${isAuthenticated ? 'ml-0 lg:ml-20' : ''} transition-all duration-300 ease-in-out`}>
+                <div className={`flex-grow ${isAuthenticated ? 'ml-0 lg:ml-20 pt-16' : ''} transition-all duration-300 ease-in-out`}>
                     {renderPage()}
                 </div>
             </div>
@@ -422,14 +437,14 @@
         };
 
         return (
-            <nav className="fixed top-0 left-0 w-full bg-gray-800 text-gray-100 p-4 shadow-lg flex justify-between items-center z-40">
+            <nav className="fixed top-0 left-0 w-full bg-gray-800 text-gray-100 p-4 shadow-lg flex justify-between items-center z-50">
                 <div className="flex items-center">
-                    <button onClick={toggleSidebar} className="lg:hidden p-2 rounded-md hover:bg-gray-700 transition duration-200">
+                    <button onClick={toggleSidebar} className="lg:hidden p-2 rounded-md hover:bg-gray-700 transition duration-200 mr-2">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
-                    <h1 className="text-xl font-bold ml-4 text-indigo-400">Codera</h1>
+                    <h1 className="text-xl font-bold text-indigo-400">Codera</h1>
                 </div>
                 <div className="flex items-center space-x-4">
                     {/* Theme Toggle */}
@@ -524,7 +539,7 @@
                 {isSidebarOpen && window.innerWidth < 1024 && (
                     <div className="fixed inset-0 bg-gray-900 bg-opacity-75 z-30" onClick={() => toggleSidebar(false)}></div>
                 )}
-                <aside ref={sidebarRef} className={`fixed top-0 left-0 h-full bg-gray-800 text-gray-100 shadow-xl z-40 transition-all duration-300 ease-in-out pt-20 ${isSidebarOpen ? 'w-64' : 'w-20'} ${!isSidebarOpen && 'items-center'} flex flex-col`}>
+                <aside ref={sidebarRef} className={`fixed top-16 left-0 h-[calc(100vh-4rem)] bg-gray-800 text-gray-100 shadow-xl z-40 transition-all duration-300 ease-in-out pt-4 ${isSidebarOpen ? 'w-64' : 'w-20'} ${!isSidebarOpen && 'items-center'} flex flex-col`}>
                     <div className={`p-4 flex ${isSidebarOpen ? 'justify-between' : 'justify-center'} items-center mb-4`}>
                         {isSidebarOpen && <span className="text-xl font-semibold">Menu</span>}
                         <button onClick={() => toggleSidebar(!isSidebarOpen)} className="p-2 rounded-full hover:bg-gray-700 transition duration-200" aria-label="Toggle sidebar">
@@ -574,9 +589,11 @@
     const LoginPage = ({ onLoginSuccess, navigateTo }) => {
         const [email, setEmail] = useState('demo@codera.com');
         const [password, setPassword] = useState('password');
+        const [confirmPassword, setConfirmPassword] = useState('');
         const [error, setError] = useState('');
         const [loading, setLoading] = useState(false);
         const [showAlert, setShowAlert] = useState(false);
+        const [isSignUp, setIsSignUp] = useState(false);
 
         const handleLogin = async () => {
             setLoading(true);
@@ -597,10 +614,87 @@
             }
         };
 
+        const handleGoogleLogin = async () => {
+            setLoading(true);
+            setError('');
+            try {
+                const auth = getAuth();
+                const provider = new GoogleAuthProvider();
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
+                console.log('Google login successful:', user.displayName, user.email);
+                setShowAlert(true);
+                setTimeout(() => {
+                    setShowAlert(false);
+                    onLoginSuccess(); // Redirects to /home
+                }, 1000);
+            } catch (err) {
+                if (err.code === 'auth/popup-closed-by-user') {
+                    setError('Sign-in was cancelled. Please try again.');
+                } else if (err.code === 'auth/popup-blocked') {
+                    setError('Pop-up was blocked by browser. Please allow pop-ups and try again.');
+                } else {
+                    setError('Google sign-in failed. Please try again.');
+                }
+                console.error('Google login error:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        const handleSignUp = async () => {
+            if (password !== confirmPassword) {
+                setError('Passwords do not match.');
+                return;
+            }
+            
+            if (password.length < 6) {
+                setError('Password must be at least 6 characters long.');
+                return;
+            }
+
+            setLoading(true);
+            setError('');
+            try {
+                const auth = getAuth();
+                const result = await createUserWithEmailAndPassword(auth, email, password);
+                const user = result.user;
+                console.log('Signup successful:', user.uid, user.email);
+                setShowAlert(true);
+                setTimeout(() => {
+                    setShowAlert(false);
+                    onLoginSuccess(); // Redirects to /home
+                }, 1000);
+            } catch (err) {
+                if (err.code === 'auth/email-already-in-use') {
+                    setError('This email is already registered. Try signing in instead.');
+                } else if (err.code === 'auth/invalid-email') {
+                    setError('Please enter a valid email address.');
+                } else if (err.code === 'auth/weak-password') {
+                    setError('Password is too weak. Please choose a stronger password.');
+                } else {
+                    setError('Sign up failed. Please try again.');
+                }
+                console.error('Signup error:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        const toggleMode = () => {
+            setIsSignUp(!isSignUp);
+            setError('');
+            setEmail(isSignUp ? 'demo@codera.com' : '');
+            setPassword(isSignUp ? 'password' : '');
+            setConfirmPassword('');
+        };
+
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-900 px-4">
                 <div className="bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-md border border-indigo-700 animate-fade-in-up">
-                    <h2 className="text-3xl font-bold text-center text-indigo-400 mb-6">Welcome to Codera</h2>
+                    <h2 className="text-3xl font-bold text-center text-indigo-400 mb-6">
+                        {isSignUp ? 'Join Codera' : 'Welcome to Codera'}
+                    </h2>
                     {showAlert && (
                         <div className="bg-green-500 text-white p-3 rounded-md mb-4 text-center animate-pulse">
                             Login successful! Redirecting...
@@ -632,12 +726,26 @@
                                 className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder="password"
+                                placeholder={isSignUp ? "Enter your password" : "password"}
                                 aria-label="Password"
                             />
                         </div>
+                        {isSignUp && (
+                            <div>
+                                <label htmlFor="confirmPassword" className="block text-gray-300 text-sm font-medium mb-1">Confirm Password</label>
+                                <input
+                                    type="password"
+                                    id="confirmPassword"
+                                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    placeholder="Confirm your password"
+                                    aria-label="Confirm Password"
+                                />
+                            </div>
+                        )}
                         <button
-                            onClick={handleLogin}
+                            onClick={isSignUp ? handleSignUp : handleLogin}
                             disabled={loading}
                             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold p-3 rounded-md shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-center"
                         >
@@ -647,20 +755,47 @@
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
                             ) : (
-                                'Sign In'
+                                isSignUp ? 'Create Account' : 'Sign In'
+                            )}
+                        </button>
+                        
+                        {/* Divider */}
+                        <div className="flex items-center my-4">
+                            <div className="flex-grow h-px bg-gray-600"></div>
+                            <span className="mx-4 text-gray-400 text-sm">or</span>
+                            <div className="flex-grow h-px bg-gray-600"></div>
+                        </div>
+                        
+                        {/* Google Sign-In Button */}
+                        <button
+                            onClick={handleGoogleLogin}
+                            disabled={loading}
+                            className="w-full bg-white hover:bg-gray-100 text-gray-800 font-bold p-3 rounded-md shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center justify-center border border-gray-300"
+                        >
+                            {loading ? (
+                                <svg className="animate-spin h-5 w-5 text-gray-800 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            ) : (
+                                <>
+                                    <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                                    </svg>
+                                    Continue with Google
+                                </>
                             )}
                         </button>
                     </div>
-                    <div className="flex justify-center mt-4">
-                        <button
-                            onClick={() => onLoginSuccess()}
-                            className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-md transition duration-200"
-                        >
-                            Skip Login (Demo Mode)
-                        </button>
-                    </div>
                     <p className="text-center text-gray-400 text-sm mt-6">
-                        Don't have an account? <a href="#" className="text-blue-400 hover:underline" onClick={() => console.log("Simulate signup")}>Sign up</a>
+                        {isSignUp ? (
+                            <>Already have an account? <button className="text-blue-400 hover:underline" onClick={toggleMode}>Sign in</button></>
+                        ) : (
+                            <>Don't have an account? <button className="text-blue-400 hover:underline" onClick={toggleMode}>Sign up</button></>
+                        )}
                     </p>
                 </div>
             </div>
