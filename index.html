@@ -136,6 +136,7 @@
             console.log('Using fallback route:', fallback);
             return fallback;
         });
+        const [previousPage, setPreviousPage] = useState('/home'); // Track previous page for profile toggle
         const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024); // Open by default on desktop
 
         // --- Firebase Initialization and Authentication ---
@@ -288,6 +289,17 @@
 
         // Function to navigate programmatically - Fixed for hash routing
         const navigateTo = (path) => {
+            // Store previous page before navigating to any new page
+            if (currentPage !== path && !currentPage.startsWith('/profile')) {
+                // Only update previous page if we're not currently on a profile page
+                setPreviousPage(currentPage);
+            } else if (currentPage !== path && currentPage.startsWith('/profile') && !path.startsWith('/profile')) {
+                // If leaving profile to go somewhere else, don't update previous page
+                // Keep the original previous page intact
+            } else if (currentPage !== path && !currentPage.startsWith('/profile') && path.startsWith('/profile')) {
+                // If going to profile from non-profile page, store current as previous
+                setPreviousPage(currentPage);
+            }
             setCurrentPage(path);
             // Use hash-based routing for file:// protocol compatibility
             const hashPath = '#' + path;
@@ -303,6 +315,40 @@
                 // Fallback to hash routing if pushState fails
                 console.log('Using hash routing fallback');
                 window.location.hash = path;
+            }
+        };
+
+        // Special toggle function for profile icon
+        const toggleProfile = () => {
+            if (currentPage.startsWith('/profile')) {
+                // If currently on profile, go back to previous page
+                setCurrentPage(previousPage);
+                const hashPath = '#' + previousPage;
+                try {
+                    if (window.location.protocol === 'file:') {
+                        window.location.hash = previousPage;
+                    } else {
+                        window.history.pushState({}, '', hashPath);
+                    }
+                } catch (error) {
+                    console.log('Using hash routing fallback');
+                    window.location.hash = previousPage;
+                }
+            } else {
+                // If not on profile, store current page and go to profile
+                setPreviousPage(currentPage);
+                setCurrentPage('/profile');
+                const hashPath = '#/profile';
+                try {
+                    if (window.location.protocol === 'file:') {
+                        window.location.hash = '/profile';
+                    } else {
+                        window.history.pushState({}, '', hashPath);
+                    }
+                } catch (error) {
+                    console.log('Using hash routing fallback');
+                    window.location.hash = '/profile';
+                }
             }
         };
 
@@ -390,7 +436,7 @@
             <div className={`flex min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}`}>
                 {isAuthenticated && (
                     <>
-                        <Navbar toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} username="CodeMaster" currentPage={currentPage} userId={userId} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />
+                        <Navbar toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} username="CodeMaster" currentPage={currentPage} userId={userId} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} navigateTo={navigateTo} toggleProfile={toggleProfile} />
                         <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={setIsSidebarOpen} navigateTo={navigateTo} currentPage={currentPage} />
                     </>
                 )}
@@ -401,7 +447,7 @@
         );
     };
 
-    const Navbar = ({ toggleSidebar, username, currentPage, userId, onLogout, theme, onToggleTheme }) => {
+    const Navbar = ({ toggleSidebar, username, currentPage, userId, onLogout, theme, onToggleTheme, navigateTo, toggleProfile }) => {
         const [showNotifications, setShowNotifications] = useState(false);
         const [notifications, setNotifications] = useState([
             { id: 1, type: 'battle', message: 'You have a battle invite from Player1!', read: false },
@@ -496,7 +542,7 @@
 
 
                     {/* Avatar */}
-                    <button onClick={() => { /* Navigate to /profile */ console.log("Navigating to /profile"); }} className="p-2 rounded-full hover:bg-gray-700 transition duration-200" aria-label="User avatar">
+                    <button onClick={toggleProfile} className="p-2 rounded-full hover:bg-gray-700 transition duration-200" aria-label="User avatar">
                         <img src="https://placehold.co/32x32/FF7700/FFFFFF?text=CM" alt="User Avatar" className="h-8 w-8 rounded-full" />
                     </button>
                     {/* Logout Button (for demo) */}
@@ -5245,6 +5291,7 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
 
         // UI State
         const [currentPage, setCurrentPage] = useState(window.location.pathname);
+        const [previousPage, setPreviousPage] = useState('/home'); // Track previous page for profile toggle
         const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024); // Open by default on desktop
         // Theme state (active App)
         const [theme, setTheme] = useState(() => {
@@ -5366,10 +5413,40 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
 
         // Function to navigate programmatically
         const navigateTo = (path) => {
+            // Store previous page before navigating to any new page
+            if (currentPage !== path && !currentPage.startsWith('/profile')) {
+                // Only update previous page if we're not currently on a profile page
+                // This prevents overwriting the original page when navigating between profile pages
+                setPreviousPage(currentPage);
+            } else if (currentPage !== path && currentPage.startsWith('/profile') && !path.startsWith('/profile')) {
+                // If leaving profile to go somewhere else, don't update previous page
+                // Keep the original previous page intact
+            } else if (currentPage !== path && !currentPage.startsWith('/profile') && path.startsWith('/profile')) {
+                // If going to profile from non-profile page, store current as previous
+                setPreviousPage(currentPage);
+            }
             setCurrentPage(path);
             // Only modify browser history if not running from a blob: URL
             if (window.location.protocol !== 'blob:') {
                 window.history.pushState({}, '', path);
+            }
+        };
+
+        // Special toggle function for profile icon
+        const toggleProfile = () => {
+            if (currentPage.startsWith('/profile')) {
+                // If currently on profile, go back to previous page
+                setCurrentPage(previousPage);
+                if (window.location.protocol !== 'blob:') {
+                    window.history.pushState({}, '', previousPage);
+                }
+            } else {
+                // If not on profile, store current page and go to profile
+                setPreviousPage(currentPage);
+                setCurrentPage('/profile');
+                if (window.location.protocol !== 'blob:') {
+                    window.history.pushState({}, '', '/profile');
+                }
             }
         };
 
@@ -5441,7 +5518,7 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
             <div className={`flex min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}`}>
                 {isAuthed && (
                     <>
-                        <Navbar toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} username="CodeMaster" currentPage={currentPage} userId={userId} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />
+                        <Navbar toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} username="CodeMaster" currentPage={currentPage} userId={userId} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} navigateTo={navigateTo} toggleProfile={toggleProfile} />
                         <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={setIsSidebarOpen} navigateTo={navigateTo} currentPage={currentPage} />
                     </>
                 )}
