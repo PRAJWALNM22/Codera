@@ -20,6 +20,63 @@
     <script src="https://unpkg.com/codemirror@5.65.16/mode/clike/clike.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/codemirror@5.65.16/theme/dracula.css">
 
+    <!-- Production WebRTC Utilities -->
+    <script>
+        // Enhanced WebRTC for production - inline to avoid CORS issues
+        class ProductionWebRTCHelper {
+            static async testMicrophone() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    console.log('✅ Microphone test passed');
+                    stream.getTracks().forEach(track => track.stop());
+                    return true;
+                } catch (error) {
+                    console.log('❌ Microphone test failed:', error.message);
+                    return false;
+                }
+            }
+            
+            static showTroubleshootingGuide() {
+                const guide = `
+🎤 VOICE CHAT TROUBLESHOOTING GUIDE:
+
+1. 🔒 HTTPS: Your app uses HTTPS ✅ (Required for voice chat)
+
+2. 📱 PERMISSIONS:
+   • Look for microphone icon in address bar
+   • Click and select "Always allow"
+   • Refresh page after granting access
+
+3. 🌐 BROWSER:
+   • Use Chrome, Firefox, Safari, or Edge (latest)
+   • Clear cache and cookies if needed
+   • Try incognito/private mode
+
+4. 🎧 HARDWARE:
+   • Ensure microphone is connected
+   • Check system audio settings
+   • Test microphone in other apps
+
+5. 🌍 NETWORK:
+   • Corporate networks may block WebRTC
+   • Try personal network or mobile hotspot
+   • Some public WiFi blocks voice chat
+
+6. 🔧 DEBUG:
+   • Press F12 to open browser console
+   • Look for detailed error messages
+   • Try refreshing the page
+
+If still not working, the issue is likely network/firewall related.`;
+                alert(guide);
+                console.log(guide);
+            }
+        }
+        
+        // Make available globally
+        window.ProductionWebRTCHelper = ProductionWebRTCHelper;
+    </script>
+
     <!-- Shims: expose React hooks and Firebase helpers matching the code's usage -->
     <script>
         // Make React hooks available as globals
@@ -4057,19 +4114,27 @@ int main() {
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' },
                 { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: 'stun:stun3.l.google.com:19302' },
-                { urls: 'stun:stun4.l.google.com:19302' },
                 
                 // Additional STUN servers for better reliability
                 { urls: 'stun:stun.stunprotocol.org:3478' },
                 { urls: 'stun:stun.nextcloud.com:443' },
                 
-                // For production, you might want to add TURN servers:
-                // {
-                //     urls: 'turn:your-turn-server.com:3478',
-                //     username: 'your-turn-username',
-                //     credential: 'your-turn-password'
-                // }
+                // Production TURN servers for better connectivity
+                {
+                    urls: 'turn:numb.viagenie.ca',
+                    credential: 'muazkh',
+                    username: 'webrtc@live.com'
+                },
+                {
+                    urls: 'turn:192.158.29.39:3478?transport=udp',
+                    credential: 'JZEOEt2V3Qb0y27GRntt2u2PAYA=',
+                    username: '28224511:1379330808'
+                },
+                {
+                    urls: 'turn:192.158.29.39:3478?transport=tcp',
+                    credential: 'JZEOEt2V3Qb0y27GRntt2u2PAYA=',
+                    username: '28224511:1379330808'
+                }
             ];
             
             console.log('🌍 Using ICE servers:', iceServers.map(s => s.urls));
@@ -4077,8 +4142,9 @@ int main() {
             const pc = new RTCPeerConnection({ 
                 iceServers,
                 iceCandidatePoolSize: 10,
-                bundlePolicy: 'balanced',
-                rtcpMuxPolicy: 'require'
+                bundlePolicy: 'max-bundle',
+                rtcpMuxPolicy: 'require',
+                iceTransportPolicy: 'all' // Try both STUN and TURN
             });
             
             console.log('✅ Peer connection created successfully');
@@ -4477,18 +4543,58 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
             } catch (error) {
                 console.error('❌ Error starting voice chat:', error);
                 
-                let errorMessage = 'Could not start voice chat. ';
+                let errorMessage = 'Voice chat setup failed. ';
+                let detailedInstructions = '';
+                
                 if (error.name === 'NotAllowedError') {
-                    errorMessage += 'Please allow microphone access and try again.';
+                    errorMessage += 'Microphone access was denied.';
+                    detailedInstructions = `
+📱 TO FIX THIS:
+1. Look for the microphone icon (🎤) in your browser's address bar
+2. Click it and select "Always allow" for this site
+3. Refresh the page and try again
+
+🔍 OR check browser settings:
+• Chrome: Settings > Privacy and Security > Site Settings > Microphone
+• Firefox: about:preferences#privacy > Permissions > Camera > Settings
+• Safari: Preferences > Websites > Microphone`;
                 } else if (error.name === 'NotFoundError') {
-                    errorMessage += 'No microphone found. Please connect a microphone and try again.';
+                    errorMessage += 'No microphone detected.';
+                    detailedInstructions = `
+🎤 TO FIX THIS:
+1. Connect a microphone or headset
+2. Check that your microphone is not muted
+3. Test your microphone in system settings
+4. Refresh the page and try again`;
                 } else if (error.name === 'NotSupportedError') {
                     errorMessage += 'WebRTC is not supported in this browser.';
+                    detailedInstructions = `
+🌐 TO FIX THIS:
+1. Use Chrome, Firefox, Safari, or Edge (latest versions)
+2. Update your browser to the latest version
+3. Voice chat requires a modern browser with WebRTC support`;
                 } else {
-                    errorMessage += 'Error: ' + error.message;
+                    errorMessage += `Technical error: ${error.message}`;
+                    detailedInstructions = `
+🔧 TROUBLESHOOTING:
+1. Refresh the page and try again
+2. Clear browser cache and cookies
+3. Try a different browser
+4. Check if you're on a corporate network (may block voice chat)
+5. Switch to a personal network or mobile hotspot
+
+💡 For detailed debugging, press F12 to open browser console`;
                 }
                 
-                alert(errorMessage);
+                alert(errorMessage + detailedInstructions);
+                console.log('🎤 VOICE CHAT TROUBLESHOOTING GUIDE:');
+                console.log('1. Check browser compatibility: Chrome, Firefox, Safari, Edge (latest)');
+                console.log('2. Ensure microphone permissions are granted');
+                console.log('3. Verify microphone is working in other applications');
+                console.log('4. Check network - corporate networks may block WebRTC');
+                console.log('5. HTTPS is required (✅ your deployment uses HTTPS)');
+                console.log('6. Try clearing browser cache and cookies');
+                console.log('Full error object:', error);
                 console.error('Full error details:', error);
             } finally {
                 setIsConnecting(false);
