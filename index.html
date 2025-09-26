@@ -423,6 +423,9 @@
                 case '/friends':
                     if (!isAuthenticated) return <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
                     return <FriendsPage navigateTo={navigateTo} />;
+                case '/notes':
+                    if (!isAuthenticated) return <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
+                    return <NotesPage navigateTo={navigateTo} />;
                 case '/profile':
                     if (!isAuthenticated) return <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
                     return <ProfilePage navigateTo={navigateTo} profileId={id} />;
@@ -618,7 +621,12 @@
                         } />
                         <NavLink to="/friends" label="Friends" icon={
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H2v-2a3 3 0 015.356-1.857M9 20v-2a3 3 0 00-3-3H4a3 3 0 00-3 3v2m10-11H9V3l4 4-4 4zm1-8v2.071c.795.347 1.637.669 2.5.91V3.929c-.863.241-1.705.563-2.5.91zM7 7a2 2 0 100-4 2 2 0 000 4zm10 0a2 2 0 100-4 2 2 0 000 4zm-4 4a2 2 0 100-4 2 2 0 000 4z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H2v-2a3 3 0 00-3 3v2m10-11H9V3l4 4-4 4zm1-8v2.071c.795.347 1.637.669 2.5.91V3.929c-.863.241-1.705.563-2.5.91zM7 7a2 2 0 100-4 2 2 0 000 4zm10 0a2 2 0 100-4 2 2 0 000 4zm-4 4a2 2 0 100-4 2 2 0 000 4z" />
+                            </svg>
+                        } />
+                        <NavLink to="/notes" label="Notes" icon={
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6M9 8h6m2 8a2 2 0 002-2V6a2 2 0 00-2-2H9l-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h12z" />
                             </svg>
                         } />
                         <NavLink to="/profile" label="Profile" icon={
@@ -1114,6 +1122,67 @@ const PracticeProblemPage = ({ problemId }) => {
   const [newAiMessage, setNewAiMessage] = useState("");
   const [isAiResponding, setIsAiResponding] = useState(false);
 
+  // Integrated Notes state (localStorage-backed)
+  const [showNotes, setShowNotes] = useState(false);
+  const [notes, setNotes] = useState(() => {
+    try {
+      const raw = localStorage.getItem('codera-notes');
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  // Helper: persist notes
+  const saveAllNotes = (next) => {
+    setNotes(next);
+    try { localStorage.setItem('codera-notes', JSON.stringify(next)); } catch(e) {}
+  };
+
+  // Filter notes for this context (practice + problemId)
+  const contextKey = `practice:${problemId}`;
+  const practiceNotes = useMemo(() => notes.filter(n => n.context?.key === contextKey), [notes, contextKey]);
+  const [hasSelection, setHasSelection] = useState(false);
+
+  // Create a note from current selection
+  const handleSaveSelectionToNotes = () => {
+    const ed = editorRef.current;
+    if (!ed) return alert('Editor not ready');
+    const sel = (ed.getSelection && ed.getSelection()) || '';
+    const snippet = (sel || '').trim();
+    if (!snippet) return alert('Please select some code in the editor first.');
+    const defaultTitle = snippet.split('\n')[0].slice(0, 60) || 'Snippet';
+    let custom = '';
+    try { custom = window.prompt('Enter a title for this note:', defaultTitle) ?? ''; } catch (e) { custom = defaultTitle; }
+    if (custom === null) return; // cancelled
+    const title = (custom.trim() || defaultTitle);
+    const note = {
+      id: `note_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
+      title,
+      snippet,
+      language: selectedLanguage,
+      createdAt: new Date().toISOString(),
+      context: { mode: 'practice', key: contextKey, problemId }
+    };
+    saveAllNotes([note, ...notes]);
+    setShowNotes(true);
+  };
+
+  const handleInsertNoteAtCursor = (note) => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    if (ed.replaceSelection) ed.replaceSelection(note.snippet);
+  };
+
+  const handleCopyNote = async (note) => {
+    try { await navigator.clipboard.writeText(note.snippet); } catch (e) { console.log('Clipboard not available'); }
+  };
+
+  const handleDeleteNote = (id) => {
+    const next = notes.filter(n => n.id !== id);
+    saveAllNotes(next);
+  };
+
   // Initialize CodeMirror
   useEffect(() => {
     const editorContainer = document.getElementById("code-editor");
@@ -1134,6 +1203,12 @@ const PracticeProblemPage = ({ problemId }) => {
     });
 
     editorRef.current.on("change", (instance) => setCode(instance.getValue()));
+    editorRef.current.on("cursorActivity", (cm) => {
+      try {
+        const s = cm.getSelection ? cm.getSelection() : '';
+        setHasSelection(!!(s && s.trim()));
+      } catch (e) { setHasSelection(false); }
+    });
 
     // React to theme changes globally
     const handleThemeChange = (e) => {
@@ -1788,17 +1863,61 @@ User question: ${newAiMessage}`;
             </select>
           </div>
 
-          <div id="code-editor" className="flex-grow rounded-md border border-gray-700 mb-4" style={{ height: "400px" }}></div>
+          <div className="relative mb-4">
+            <div id="code-editor" className="flex-grow rounded-md border border-gray-700" style={{ height: "400px" }}></div>
+            {hasSelection && (
+              <button
+                onClick={handleSaveSelectionToNotes}
+                className="absolute top-2 right-2 px-3 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 text-white rounded shadow"
+                title="Save selected code to Notes"
+              >
+                Save selection
+              </button>
+            )}
+          </div>
 
-          <div className="flex justify-end gap-3 mb-4">
+          <div className="flex flex-wrap justify-end gap-3 mb-4">
             <button onClick={handleRunCode} disabled={loading} className="px-6 py-2 bg-blue-600 rounded-md">Run Code</button>
             <button onClick={handleSubmitCode} disabled={loading} className="px-6 py-2 bg-green-600 rounded-md">Submit</button>
+            <button onClick={handleSaveSelectionToNotes} className="px-6 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-md text-white">Save selection to Notes</button>
+            <button onClick={() => setShowNotes(s => !s)} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md text-white">{showNotes ? 'Hide Notes' : 'Show Notes'}</button>
           </div>
 
           <div className="bg-gray-700 p-3 rounded-md text-gray-200 text-sm min-h-[100px] overflow-auto">
             <h3 className="font-medium text-white mb-1">Output:</h3>
             <pre>{output}</pre>
           </div>
+
+          {showNotes && (
+            <div className="mt-4 bg-gray-700 p-4 rounded-md text-gray-100">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-semibold">Notes for this problem</h3>
+                <span className="text-xs text-gray-300">{practiceNotes.length} saved</span>
+              </div>
+              {practiceNotes.length === 0 ? (
+                <p className="text-gray-300 text-sm">No notes yet. Select code in the editor and click "Save selection to Notes".</p>
+              ) : (
+                <ul className="space-y-2">
+                  {practiceNotes.map(note => (
+                    <li key={note.id} className="bg-gray-800 border border-gray-600 rounded-md p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-white">{note.title || 'Snippet'}</div>
+                          <div className="text-xs text-gray-400">{new Date(note.createdAt).toLocaleString()} • {note.language}</div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleInsertNoteAtCursor(note)} className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded">Insert</button>
+                          <button onClick={() => handleCopyNote(note)} className="px-3 py-1 text-xs bg-teal-600 hover:bg-teal-700 rounded">Copy</button>
+                          <button onClick={() => handleDeleteNote(note.id)} className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 rounded">Delete</button>
+                        </div>
+                      </div>
+                      <pre className="mt-2 text-sm whitespace-pre-wrap text-gray-200 overflow-auto max-h-40">{note.snippet}</pre>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -2446,6 +2565,91 @@ User question: ${newAiMessage}`;
         }
     };
 
+    // Integrated Notes Page
+    const NotesPage = ({ navigateTo }) => {
+        const [allNotes, setAllNotes] = useState(() => {
+            try { const raw = localStorage.getItem('codera-notes'); return raw ? JSON.parse(raw) : []; } catch(e) { return []; }
+        });
+        const [query, setQuery] = useState('');
+        const [mode, setMode] = useState(''); // '', 'practice', 'battle'
+
+        // Keep in sync if other pages modify notes
+        useEffect(() => {
+            const onStorage = () => {
+                try { const raw = localStorage.getItem('codera-notes'); setAllNotes(raw ? JSON.parse(raw) : []); } catch(e) {}
+            };
+            window.addEventListener('storage', onStorage);
+            return () => window.removeEventListener('storage', onStorage);
+        }, []);
+
+        const filtered = useMemo(() => {
+            return allNotes.filter(n => {
+                const matchesMode = mode ? (n.context?.mode === mode) : true;
+                const matchesQuery = query ? ((n.title||'').toLowerCase().includes(query.toLowerCase()) || (n.snippet||'').toLowerCase().includes(query.toLowerCase())) : true;
+                return matchesMode && matchesQuery;
+            });
+        }, [allNotes, mode, query]);
+
+        const handleCopy = async (note) => { try { await navigator.clipboard.writeText(note.snippet); } catch(e) {} };
+        const handleDelete = (id) => {
+            const next = allNotes.filter(n => n.id !== id);
+            setAllNotes(next);
+            try { localStorage.setItem('codera-notes', JSON.stringify(next)); } catch(e) {}
+        };
+        const openContext = (note) => {
+            const ctx = note.context || {};
+            if (ctx.mode === 'practice' && ctx.problemId) {
+                navigateTo(`/practice/${ctx.problemId}`);
+            } else if (ctx.mode === 'battle') {
+                if (ctx.roomId) navigateTo(`/battle/room?id=${ctx.roomId}`);
+                else navigateTo('/battle');
+            }
+        };
+
+        return (
+            <div className="p-8 pt-24 pl-28 lg:pl-28 min-h-screen bg-gray-900 text-gray-100 font-inter">
+                <h1 className="text-3xl font-bold text-indigo-400 mb-6">Integrated Notes</h1>
+                <div className="bg-gray-800 p-4 rounded-lg shadow-lg border border-indigo-700 mb-4 flex flex-col md:flex-row gap-3 md:items-center">
+                    <input
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Search notes..."
+                        className="flex-1 bg-gray-700 text-gray-100 p-2 rounded-md border border-gray-600"
+                    />
+                    <select value={mode} onChange={(e) => setMode(e.target.value)} className="bg-gray-700 text-gray-100 p-2 rounded-md border border-gray-600">
+                        <option value="">All</option>
+                        <option value="practice">Practice</option>
+                        <option value="battle">Battle</option>
+                    </select>
+                    <span className="text-sm text-gray-300">{filtered.length} notes</span>
+                </div>
+
+                {filtered.length === 0 ? (
+                    <p className="text-gray-400">No notes found.</p>
+                ) : (
+                    <ul className="space-y-3">
+                        {filtered.map(note => (
+                            <li key={note.id} className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <div className="text-white font-semibold text-sm">{note.title || 'Snippet'}</div>
+                                        <div className="text-xs text-gray-400 mt-0.5">{new Date(note.createdAt).toLocaleString()} • {note.language} • {(note.context?.mode||'').toUpperCase()}</div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => openContext(note)} className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 rounded">Open</button>
+                                        <button onClick={() => handleCopy(note)} className="px-3 py-1 text-xs bg-teal-600 hover:bg-teal-700 rounded">Copy</button>
+                                        <button onClick={() => handleDelete(note.id)} className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 rounded">Delete</button>
+                                    </div>
+                                </div>
+                                <pre className="mt-2 text-sm whitespace-pre-wrap text-gray-200 overflow-auto max-h-48">{note.snippet}</pre>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
+        );
+    };
+
     // Battle Room Page - (using the previous codera_battle_ui content, adapted for routing)
     const BattleRoomPage = ({ navigateTo, userId, db }) => {
         const [battleProblemId, setBattleProblemId] = useState(1);
@@ -2474,6 +2678,46 @@ User question: ${newAiMessage}`;
         const [winner, setWinner] = useState(null); // 'player1', 'player2', 'draw'
         const [editor, setEditor] = useState(null);
         const [loading, setLoading] = useState(false);
+
+        // Integrated Notes (battle)
+        const [showNotes, setShowNotes] = useState(false);
+        const [notes, setNotes] = useState(() => {
+            try {
+                const raw = localStorage.getItem('codera-notes');
+                return raw ? JSON.parse(raw) : [];
+            } catch (e) { return []; }
+        });
+        const saveAllNotes = (next) => {
+            setNotes(next);
+            try { localStorage.setItem('codera-notes', JSON.stringify(next)); } catch(e) {}
+        };
+        const battleContextKey = useMemo(() => `battle:${battleProblemId}`, [battleProblemId]);
+        const battleNotes = useMemo(() => notes.filter(n => n.context?.key === battleContextKey), [notes, battleContextKey]);
+        const [hasSelection, setHasSelection] = useState(false);
+        const handleSaveSelectionToNotes = () => {
+            if (!editor) return alert('Editor not ready');
+            const sel = (editor.getSelection && editor.getSelection()) || '';
+            const snippet = (sel || '').trim();
+            if (!snippet) return alert('Please select some code in the editor first.');
+            const defaultTitle = snippet.split('\n')[0].slice(0, 60) || 'Snippet';
+            let custom = '';
+            try { custom = window.prompt('Enter a title for this note:', defaultTitle) ?? ''; } catch (e) { custom = defaultTitle; }
+            if (custom === null) return; // cancelled
+            const title = (custom.trim() || defaultTitle);
+            const note = {
+                id: `note_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
+                title,
+                snippet,
+                language: selectedLanguage,
+                createdAt: new Date().toISOString(),
+                context: { mode: 'battle', key: battleContextKey, battleProblemId, roomId }
+            };
+            saveAllNotes([note, ...notes]);
+            setShowNotes(true);
+        };
+        const handleInsertNoteAtCursor = (note) => { if (editor?.replaceSelection) editor.replaceSelection(note.snippet); };
+        const handleCopyNote = async (note) => { try { await navigator.clipboard.writeText(note.snippet); } catch(e) {} };
+        const handleDeleteNote = (id) => { const next = notes.filter(n => n.id !== id); saveAllNotes(next); };
         const [roomId, setRoomId] = useState(null);
         const [participants, setParticipants] = useState({});
         const [isCreator, setIsCreator] = useState(false);
@@ -3136,6 +3380,12 @@ User question: ${newAiMessage}`;
             
             // Track changes
             newEditor.on("change", (instance) => setPlayer1Code(instance.getValue()));
+            newEditor.on("cursorActivity", (cm) => {
+                try {
+                    const s = cm.getSelection ? cm.getSelection() : '';
+                    setHasSelection(!!(s && s.trim()));
+                } catch (e) { setHasSelection(false); }
+            });
             setEditor(newEditor);
             editorInitialized.current = true;
             
@@ -4724,13 +4974,24 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                             </div>
                             
                             {/* CodeMirror Editor Container */}
-                            <div 
-                                id="battle-editor" 
-                                className="flex-grow mb-3 border border-gray-600 rounded-md overflow-hidden"
-                                style={{ minHeight: '350px' }}
-                            ></div>
+                            <div className="relative mb-3">
+                                <div 
+                                    id="battle-editor" 
+                                    className="flex-grow border border-gray-600 rounded-md overflow-hidden"
+                                    style={{ minHeight: '350px' }}
+                                ></div>
+                                {hasSelection && (
+                                    <button
+                                        onClick={handleSaveSelectionToNotes}
+                                        className="absolute top-2 right-2 px-3 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 text-white rounded shadow"
+                                        title="Save selected code to Notes"
+                                    >
+                                        Save selection
+                                    </button>
+                                )}
+                            </div>
                             
-                            <div className="flex justify-end gap-2 mb-3">
+                            <div className="flex flex-wrap justify-end gap-2 mb-3">
                                 <button
                                     onClick={() => handleRunCode(1)}
                                     className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-md transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -4745,11 +5006,44 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                                 >
                                     Submit
                                 </button>
+                                <button onClick={handleSaveSelectionToNotes} className="px-5 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-md shadow-md">Save selection to Notes</button>
+                                <button onClick={() => setShowNotes(s => !s)} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md shadow-md">{showNotes ? 'Hide Notes' : 'Show Notes'}</button>
                             </div>
                             <div className="bg-gray-700 p-3 rounded-md text-gray-200 text-sm min-h-[80px] overflow-auto">
                                 <h3 className="font-medium text-white mb-1">Output:</h3>
                                 <pre className="whitespace-pre-wrap">{player1Output}</pre>
                             </div>
+
+                            {showNotes && (
+                                <div className="mt-4 bg-gray-700 p-4 rounded-md text-gray-100">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-lg font-semibold">Notes for this battle</h3>
+                                        <span className="text-xs text-gray-300">{battleNotes.length} saved</span>
+                                    </div>
+                                    {battleNotes.length === 0 ? (
+                                        <p className="text-gray-300 text-sm">No notes yet. Select code in the editor and click "Save selection to Notes".</p>
+                                    ) : (
+                                        <ul className="space-y-2">
+                                            {battleNotes.map(note => (
+                                                <li key={note.id} className="bg-gray-800 border border-gray-600 rounded-md p-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <div className="text-sm font-medium text-white">{note.title || 'Snippet'}</div>
+                                                            <div className="text-xs text-gray-400">{new Date(note.createdAt).toLocaleString()} • {note.language}</div>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <button onClick={() => handleInsertNoteAtCursor(note)} className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded">Insert</button>
+                                                            <button onClick={() => handleCopyNote(note)} className="px-3 py-1 text-xs bg-teal-600 hover:bg-teal-700 rounded">Copy</button>
+                                                            <button onClick={() => handleDeleteNote(note.id)} className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 rounded">Delete</button>
+                                                        </div>
+                                                    </div>
+                                                    <pre className="mt-2 text-sm whitespace-pre-wrap text-gray-200 overflow-auto max-h-40">{note.snippet}</pre>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            )}
                         </div>
                         
                         {/* Friend's Code Viewer - Only show when friend is sharing code */}
@@ -5506,6 +5800,8 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                     return isAuthed ? <LeaderboardPage navigateTo={navigateTo} /> : <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
                 case '/friends':
                     return isAuthed ? <FriendsPage navigateTo={navigateTo} /> : <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
+                case '/notes':
+                    return isAuthed ? <NotesPage navigateTo={navigateTo} /> : <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
                 case '/profile':
                     return isAuthed ? <ProfilePage navigateTo={navigateTo} profileId={id} /> : <LoginPage onLoginSuccess={() => navigateTo('/home')} navigateTo={navigateTo} />;
                 default:

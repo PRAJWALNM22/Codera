@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Cross-Tab Chat Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: white; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .messages { background: #2a2a2a; padding: 15px; height: 300px; overflow-y: auto; margin: 10px 0; border: 1px solid #444; border-radius: 5px; }
+        .message { margin: 5px 0; padding: 5px; }
+        .input-area { display: flex; gap: 10px; }
+        .input-area input { flex-grow: 1; padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 3px; }
+        .input-area button { padding: 10px 20px; background: #0066cc; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        .tab-id { color: #888; font-size: 12px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💬 Cross-Tab Chat Test</h1>
+        <div class="tab-id">Tab ID: <span id="tab-id"></span></div>
+        
+        <p><strong>Instructions:</strong></p>
+        <ol>
+            <li>Open this page in another browser tab</li>
+            <li>Send messages in both tabs</li>
+            <li>Messages should appear in both tabs immediately</li>
+        </ol>
+        
+        <div id="messages" class="messages">
+            <div style="color: #888;">No messages yet...</div>
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="message-input" placeholder="Type a message..." onkeydown="handleKeyDown(event)">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+        
+        <div style="margin-top: 10px;">
+            <button onclick="openNewTab()" style="background: #666; color: white; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer;">
+                🆕 Open New Tab
+            </button>
+            <button onclick="clearChat()" style="background: #cc6600; color: white; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; margin-left: 5px;">
+                🧹 Clear Chat
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        // Generate unique tab ID
+        const tabId = 'Tab_' + Math.random().toString(36).substr(2, 6);
+        document.getElementById('tab-id').textContent = tabId;
+        
+        let messages = [];
+        
+        function updateMessagesDisplay() {
+            const container = document.getElementById('messages');
+            if (messages.length === 0) {
+                container.innerHTML = '<div style="color: #888;">No messages yet...</div>';
+            } else {
+                container.innerHTML = messages.map(msg => {
+                    const isOwn = msg.sender === tabId;
+                    return `
+                        <div class="message" style="color: ${isOwn ? '#4ade80' : '#60a5fa'};">
+                            <strong>${msg.sender}:</strong> ${msg.text}
+                            <span style="color: #888; font-size: 11px; float: right;">
+                                ${new Date(msg.timestamp).toLocaleTimeString()}
+                            </span>
+                        </div>
+                    `;
+                }).join('');
+            }
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+            
+            if (!text) return;
+            
+            console.log('📤 Sending message:', text);
+            
+            const message = {
+                id: Date.now() + Math.random(),
+                sender: tabId,
+                text: text,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Add to local messages
+            messages.push(message);
+            updateMessagesDisplay();
+            
+            // Save to localStorage (this will trigger storage event in other tabs)
+            try {
+                const allMessages = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                allMessages.push(message);
+                localStorage.setItem('simple-chat-messages', JSON.stringify(allMessages));
+                console.log('✅ Saved to localStorage, total messages:', allMessages.length);
+            } catch (error) {
+                console.error('❌ Error saving to localStorage:', error);
+            }
+            
+            input.value = '';
+        }
+        
+        function handleKeyDown(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+        
+        function clearChat() {
+            messages = [];
+            localStorage.removeItem('simple-chat-messages');
+            updateMessagesDisplay();
+            console.log('🧹 Chat cleared');
+        }
+        
+        function openNewTab() {
+            window.open('simple_chat_test.html', '_blank');
+        }
+        
+        // Listen for storage events from other tabs
+        window.addEventListener('storage', function(e) {
+            console.log('📡 Storage event received:', {
+                key: e.key,
+                hasNewValue: !!e.newValue,
+                hasOldValue: !!e.oldValue
+            });
+            
+            if (e.key === 'simple-chat-messages' && e.newValue) {
+                try {
+                    const allMessages = JSON.parse(e.newValue);
+                    console.log('📥 Received messages from other tab:', allMessages.length);
+                    
+                    // Add any new messages we don't have
+                    let addedCount = 0;
+                    allMessages.forEach(msg => {
+                        if (!messages.some(m => m.id === msg.id)) {
+                            messages.push(msg);
+                            addedCount++;
+                        }
+                    });
+                    
+                    if (addedCount > 0) {
+                        // Sort messages by timestamp
+                        messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                        updateMessagesDisplay();
+                        console.log('✅ Added', addedCount, 'new messages from other tab');
+                    }
+                } catch (error) {
+                    console.error('❌ Error processing storage event:', error);
+                }
+            }
+        });
+        
+        // Load existing messages on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                const savedMessages = localStorage.getItem('simple-chat-messages');
+                if (savedMessages) {
+                    messages = JSON.parse(savedMessages);
+                    messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                    updateMessagesDisplay();
+                    console.log('📥 Loaded', messages.length, 'existing messages');
+                }
+            } catch (error) {
+                console.error('❌ Error loading existing messages:', error);
+            }
+            
+            // Focus input
+            document.getElementById('message-input').focus();
+            
+            console.log('🚀 Simple chat test loaded, Tab ID:', tabId);
+            console.log('📋 Instructions: Open another tab and send messages to test cross-tab sync');
+        });
+    </script>
+</body>
+</html>

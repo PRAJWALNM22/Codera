@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Cross-Tab Communication</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: white; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #333; border-radius: 5px; }
+        .message { background: #2a2a2a; padding: 10px; margin: 5px 0; border-radius: 3px; }
+        .input-group { display: flex; gap: 10px; margin: 10px 0; }
+        .input-group input { flex-grow: 1; padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 3px; }
+        .btn { padding: 8px 15px; background: #0066cc; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        .status { font-family: monospace; font-size: 12px; color: #888; }
+        .good { color: #4ade80; }
+        .bad { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐛 Debug Cross-Tab Communication</h1>
+        
+        <div class="section">
+            <h2>📱 Tab Info</h2>
+            <div id="tab-info" class="status">Loading...</div>
+        </div>
+        
+        <div class="section">
+            <h2>💬 Test Messages</h2>
+            <div class="input-group">
+                <input type="text" id="message-input" placeholder="Type a test message..." onkeydown="handleKeyPress(event)">
+                <button class="btn" onclick="sendTestMessage()">Send</button>
+            </div>
+            <button class="btn" onclick="clearMessages()" style="background: #cc6600;">Clear All</button>
+        </div>
+        
+        <div class="section">
+            <h2>📋 Received Messages</h2>
+            <div id="messages-container">
+                <div class="status">No messages yet...</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🔍 Debug Log</h2>
+            <div id="debug-log" style="max-height: 200px; overflow-y: auto; background: #222; padding: 10px; border-radius: 3px; font-family: monospace; font-size: 11px;">
+                <div class="status">Debug log will appear here...</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>⚡ Quick Actions</h2>
+            <button class="btn" onclick="openNewTab()">🆕 Open New Tab</button>
+            <button class="btn" onclick="testLocalStorage()" style="background: #cc0066;">🧪 Test localStorage</button>
+            <button class="btn" onclick="location.reload()" style="background: #666;">🔄 Refresh</button>
+        </div>
+    </div>
+    
+    <script>
+        let tabId = 'Tab_' + Math.random().toString(36).substr(2, 8);
+        let messages = [];
+        let debugLog = [];
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            debugLog.push(logEntry);
+            console.log(logEntry);
+            updateDebugDisplay();
+        }
+        
+        function updateDebugDisplay() {
+            const debugContainer = document.getElementById('debug-log');
+            debugContainer.innerHTML = debugLog.slice(-20).map(entry => 
+                `<div class="status">${entry}</div>`
+            ).join('');
+            debugContainer.scrollTop = debugContainer.scrollHeight;
+        }
+        
+        function updateTabInfo() {
+            document.getElementById('tab-info').innerHTML = `
+                <div class="good">Tab ID: ${tabId}</div>
+                <div class="status">Storage Events: ${typeof window.addEventListener === 'function' ? 'Supported' : 'Not Supported'}</div>
+                <div class="status">localStorage: ${typeof localStorage !== 'undefined' ? 'Available' : 'Not Available'}</div>
+                <div class="status">Messages: ${messages.length}</div>
+            `;
+        }
+        
+        function updateMessagesDisplay() {
+            const container = document.getElementById('messages-container');
+            if (messages.length === 0) {
+                container.innerHTML = '<div class="status">No messages yet...</div>';
+            } else {
+                container.innerHTML = messages.map(msg => `
+                    <div class="message">
+                        <strong style="color: ${msg.sender === tabId ? '#4ade80' : '#60a5fa'};">${msg.sender}:</strong> 
+                        ${msg.text}
+                        <span class="status" style="float: right;">${new Date(msg.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        function sendTestMessage() {
+            const input = document.getElementById('message-input');
+            const messageText = input.value.trim();
+            
+            if (!messageText) {
+                log('❌ Empty message, not sending');
+                return;
+            }
+            
+            log(`📤 Sending message: "${messageText}"`);
+            
+            const message = {
+                id: Date.now() + Math.random(),
+                sender: tabId,
+                text: messageText,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Add to local messages
+            messages.push(message);
+            updateMessagesDisplay();
+            
+            // Try to broadcast to other tabs
+            try {
+                // Method 1: Direct localStorage update
+                const allMessages = JSON.parse(localStorage.getItem('debug-messages') || '[]');
+                allMessages.push(message);
+                localStorage.setItem('debug-messages', JSON.stringify(allMessages));
+                log('✅ Saved to localStorage');
+                
+                // Method 2: Broadcast event
+                const broadcastData = {
+                    type: 'NEW_MESSAGE',
+                    message: message,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem('debug-broadcast', JSON.stringify(broadcastData));
+                log('📡 Broadcasted via localStorage event');
+                
+                // Remove broadcast key to allow future broadcasts
+                setTimeout(() => {
+                    localStorage.removeItem('debug-broadcast');
+                }, 100);
+                
+            } catch (error) {
+                log('❌ Error broadcasting: ' + error.message);
+            }
+            
+            input.value = '';
+            updateTabInfo();
+        }
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendTestMessage();
+            }
+        }
+        
+        function clearMessages() {
+            messages = [];
+            localStorage.removeItem('debug-messages');
+            localStorage.removeItem('debug-broadcast');
+            updateMessagesDisplay();
+            updateTabInfo();
+            log('🧹 Cleared all messages');
+        }
+        
+        function testLocalStorage() {
+            try {
+                const testKey = 'debug-test-' + Date.now();
+                const testValue = 'Test value: ' + Math.random();
+                
+                localStorage.setItem(testKey, testValue);
+                const retrieved = localStorage.getItem(testKey);
+                localStorage.removeItem(testKey);
+                
+                if (retrieved === testValue) {
+                    log('✅ localStorage test PASSED');
+                } else {
+                    log('❌ localStorage test FAILED - value mismatch');
+                }
+            } catch (error) {
+                log('❌ localStorage test ERROR: ' + error.message);
+            }
+        }
+        
+        function openNewTab() {
+            window.open('debug_cross_tab.html', '_blank', 'width=800,height=600');
+            log('🆕 Opened new tab for testing');
+        }
+        
+        // Listen for storage events from other tabs
+        window.addEventListener('storage', function(e) {
+            log(`📡 Storage event detected: key="${e.key}", newValue=${e.newValue ? 'exists' : 'null'}`);
+            
+            if (e.key === 'debug-broadcast' && e.newValue) {
+                try {
+                    const broadcastData = JSON.parse(e.newValue);
+                    log(`📥 Received broadcast: ${broadcastData.type}`);
+                    
+                    if (broadcastData.type === 'NEW_MESSAGE') {
+                        const receivedMessage = broadcastData.message;
+                        
+                        // Only add if from different sender and not already in messages
+                        if (receivedMessage.sender !== tabId) {
+                            const messageExists = messages.some(m => m.id === receivedMessage.id);
+                            if (!messageExists) {
+                                messages.push(receivedMessage);
+                                updateMessagesDisplay();
+                                updateTabInfo();
+                                log(`✅ Added message from ${receivedMessage.sender}`);
+                            } else {
+                                log(`⚠️ Message already exists, ignoring duplicate`);
+                            }
+                        } else {
+                            log(`ℹ️ Ignoring own message from broadcast`);
+                        }
+                    }
+                } catch (error) {
+                    log('❌ Error processing broadcast: ' + error.message);
+                }
+            }
+            
+            if (e.key === 'debug-messages' && e.newValue) {
+                try {
+                    const allMessages = JSON.parse(e.newValue);
+                    log(`📥 Received updated messages list: ${allMessages.length} total`);
+                    
+                    // Add any new messages we don't have
+                    let addedCount = 0;
+                    allMessages.forEach(msg => {
+                        if (!messages.some(m => m.id === msg.id)) {
+                            messages.push(msg);
+                            addedCount++;
+                        }
+                    });
+                    
+                    if (addedCount > 0) {
+                        updateMessagesDisplay();
+                        updateTabInfo();
+                        log(`✅ Added ${addedCount} new messages from sync`);
+                    }
+                } catch (error) {
+                    log('❌ Error processing message sync: ' + error.message);
+                }
+            }
+        });
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Debug page loaded');
+            log('📱 Tab ID: ' + tabId);
+            
+            // Load existing messages
+            try {
+                const savedMessages = localStorage.getItem('debug-messages');
+                if (savedMessages) {
+                    messages = JSON.parse(savedMessages);
+                    log(`📥 Loaded ${messages.length} existing messages`);
+                }
+            } catch (error) {
+                log('⚠️ Could not load existing messages: ' + error.message);
+            }
+            
+            updateTabInfo();
+            updateMessagesDisplay();
+            log('✅ Initialization complete');
+            
+            // Focus input
+            document.getElementById('message-input').focus();
+        });
+        
+        // Test storage events are working
+        setTimeout(() => {
+            log('🧪 Testing storage event detection...');
+            try {
+                localStorage.setItem('debug-ping', Date.now().toString());
+                setTimeout(() => {
+                    localStorage.removeItem('debug-ping');
+                }, 100);
+            } catch (error) {
+                log('❌ Storage event test failed: ' + error.message);
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

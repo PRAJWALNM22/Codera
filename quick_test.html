@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Battle Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: white; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #333; border-radius: 5px; }
+        .good { color: #4ade80; }
+        .bad { color: #ef4444; }
+        .test-link { color: #60a5fa; text-decoration: underline; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Quick Battle Test</h1>
+        
+        <div class="section">
+            <h2>🔧 Test Instructions</h2>
+            <ol>
+                <li><strong>Open main app:</strong> <span class="test-link" onclick="window.open('index.html', '_blank')">Click here to open index.html</span></li>
+                <li><strong>Navigate to Battle:</strong> Click "Battle Mode" from the main menu</li>
+                <li><strong>Test CodeMirror:</strong> 
+                    <ul>
+                        <li>Check if editor shows clean Python code (no duplication)</li>
+                        <li>Switch between languages (JS → Python → Java → C++)</li>
+                        <li>Verify no code duplication occurs</li>
+                    </ul>
+                </li>
+                <li><strong>Test Chat:</strong>
+                    <ul>
+                        <li>Scroll down to chat section</li>
+                        <li>Type a message and press Enter</li>
+                        <li>Click Send button to send another message</li>
+                        <li>Verify messages appear and stay visible</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+        
+        <div class="section">
+            <h2>🎯 What to Look For</h2>
+            <h3 class="good">✅ Expected Results:</h3>
+            <ul>
+                <li><strong>CodeMirror:</strong> Single, clean starter code per language</li>
+                <li><strong>Language Switch:</strong> Clean transitions without duplication</li>
+                <li><strong>Chat:</strong> Messages send and display consistently</li>
+                <li><strong>Console:</strong> Clear debug messages showing success</li>
+            </ul>
+            
+            <h3 class="bad">❌ Problems to Watch For:</h3>
+            <ul>
+                <li><strong>Code Duplication:</strong> Starter code appearing multiple times</li>
+                <li><strong>Chat Issues:</strong> Messages not appearing or disappearing</li>
+                <li><strong>Console Errors:</strong> Red error messages in browser console</li>
+            </ul>
+        </div>
+        
+        <div class="section">
+            <h2>🔍 Debug Info to Check</h2>
+            <p><strong>Open Browser Console (F12) and look for:</strong></p>
+            <ul>
+                <li><span class="good">"🔍 Editor container found: true"</span></li>
+                <li><span class="good">"✅ CodeMirror instance created successfully"</span></li>
+                <li><span class="good">"🔄 Switching to language: [language]"</span></li>
+                <li><span class="good">"💬 [CHAT] Sending message: [message]"</span></li>
+                <li><span class="good">"💬 [CHAT] Updated messages array: [array]"</span></li>
+            </ul>
+        </div>
+        
+        <div class="section">
+            <h2>⚡ Quick Actions</h2>
+            <button onclick="window.open('index.html', '_blank')" style="padding: 10px 20px; background: #0066cc; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px;">
+                🚀 Open Main App
+            </button>
+            <button onclick="location.reload()" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px;">
+                🔄 Refresh This Page
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        console.log('🧪 Quick test page loaded');
+        console.log('🎯 Ready to test battle mode fixes!');
+        
+        // Add timestamp
+        const timestamp = document.createElement('div');
+        timestamp.innerHTML = `<small style="color: #888;">Test page loaded at: ${new Date().toLocaleString()}</small>`;
+        document.body.appendChild(timestamp);
+    </script>
+</body>
+</html>
