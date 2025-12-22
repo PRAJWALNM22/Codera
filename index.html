@@ -196,80 +196,12 @@ If still not working, the issue is likely network/firewall related.`;
             border-radius: 4px;
         }
     </style>
-    <style>
-        /* Visual Debug Console */
-        #debug-console {
-            position: fixed;
-            bottom: 0;
-            right: 0;
-            width: 400px;
-            height: 300px;
-            background: rgba(0, 0, 0, 0.9);
-            color: #0f0;
-            font-family: monospace;
-            font-size: 12px;
-            padding: 10px;
-            overflow-y: auto;
-            z-index: 9999;
-            border-top-left-radius: 10px;
-            pointer-events: none;
-            /* Let clicks pass through */
-        }
 
-        #debug-console div {
-            margin-bottom: 2px;
-            border-bottom: 1px solid #333;
-        }
-
-        .log-error {
-            color: #f55;
-            font-weight: bold;
-        }
-
-        .log-warn {
-            color: #fe0;
-        }
-    </style>
 </head>
 
 <body class="bg-gray-900">
-    <div id="debug-console">
-        <div>Debug Console Initialized...</div>
-    </div>
-    <script>
-        (function () {
-            const debugConsole = document.getElementById('debug-console');
-            function logToScreen(msg, type = 'info') {
-                const div = document.createElement('div');
-                div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-                if (type === 'error') div.className = 'log-error';
-                if (type === 'warn') div.className = 'log-warn';
-                debugConsole.appendChild(div);
-                debugConsole.scrollTop = debugConsole.scrollHeight;
-            }
 
-            const originalLog = console.log;
-            const originalError = console.error;
-            const originalWarn = console.warn;
 
-            console.log = function (...args) {
-                originalLog.apply(console, args);
-                logToScreen(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '));
-            };
-            console.error = function (...args) {
-                originalError.apply(console, args);
-                logToScreen(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'error');
-            };
-            console.warn = function (...args) {
-                originalWarn.apply(console, args);
-                logToScreen(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'warn');
-            };
-
-            window.onerror = function (msg, url, line) {
-                logToScreen(`Uncaught Error: ${msg} @ ${line}`, 'error');
-            };
-        })();
-    </script>
     <script>
         try {
             if (localStorage.getItem('theme') === 'light') {
@@ -1789,12 +1721,10 @@ int main() {
                         stdin: "",
                     };
 
-                    const res = await fetch("https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=true", {
+                    const res = await fetch("/api/judge", {
                         method: "POST",
                         headers: {
-                            "Content-Type": "application/json",
-                            "x-rapidapi-host": "judge0-ce.p.rapidapi.com",
-                            "x-rapidapi-key": "1f4bcaf085mshdb3d102dc891ab6p12b4d2jsn3480d98ed8c1"
+                            "Content-Type": "application/json"
                         },
                         body: JSON.stringify({
                             source_code: btoa(wrappedCode),
@@ -2043,13 +1973,11 @@ int main() {
                         };
 
                         const res = await fetch(
-                            "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=true",
+                            "/api/judge",
                             {
                                 method: "POST",
                                 headers: {
-                                    "Content-Type": "application/json",
-                                    "x-rapidapi-host": "judge0-ce.p.rapidapi.com",
-                                    "x-rapidapi-key": "1f4bcaf085mshdb3d102dc891ab6p12b4d2jsn3480d98ed8c1" // Replace with your key
+                                    "Content-Type": "application/json"
                                 },
                                 body: JSON.stringify({
                                     source_code: btoa(wrappedCode),
@@ -2103,10 +2031,8 @@ The user is asking for a hint or help. Provide a short conceptual hint.
 User question: ${newAiMessage}`;
 
                     const payload = { contents: [{ role: "user", parts: [{ text: promptText }] }] };
-                    const apiKey = "AIzaSyBN0C3Zb07YO_Orw_anqZjIMzsddH5vp0g"; // Replace with your key
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
-
-                    const response = await fetch(apiUrl, {
+                    // Call backend proxy instead of direct API
+                    const response = await fetch('/api/ai', {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(payload),

@@ -1,3 +1,5 @@
-.vercel
 
+# Environment Variables
+.env
 .vercel
+node_modules/
