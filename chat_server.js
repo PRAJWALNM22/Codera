@@ -91,7 +91,7 @@ io.on('connection', (socket) => {
 });
 
 // Fallback for SPA routing if needed (though app uses hash routing currently)
-app.get(/(.*)/, (req, res) => {
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
