@@ -125,7 +125,7 @@ class DatabaseService {
 
     async getDiscoverUsers(userId, excludeIds = []) {
         if (!this.db) return [];
-        const snapshot = await this.db.collection('users').limit(20).get();
+        const snapshot = await this.db.collection('users').limit(50).get();
         return snapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() }))
             .filter(u => u.id !== userId && !excludeIds.includes(u.id));
