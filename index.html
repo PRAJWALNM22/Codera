@@ -23,6 +23,10 @@
     <script src="https://unpkg.com/codemirror@5.65.16/mode/clike/clike.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/codemirror@5.65.16/theme/dracula.css">
 
+    <!-- Utils and Services -->
+    <script src="js/utils/firebase.js"></script>
+    <script src="js/services/db.js"></script>
+
     <!-- Production WebRTC Utilities -->
     <script>
         // Enhanced WebRTC for production - inline to avoid CORS issues
@@ -311,6 +315,12 @@ If still not working, the issue is likely network/firewall related.`;
                         console.log('✅ Firebase app initialized:', app.name);
                         console.log('✅ Firestore initialized');
                         console.log('✅ Auth initialized');
+
+                        // Initialize centralized DB Service
+                        if (window.dbService) {
+                            window.dbService.initialize(firestore, firebaseAuth);
+                            loadProblems(); // Trigger fetch
+                        }
 
                         // Set up authentication state listener
                         firebaseAuth.onAuthStateChanged((user) => {
@@ -2705,113 +2715,35 @@ User question: ${newAiMessage}`;
         };
 
         // Shared problems data for Practice and Battle
-        const PROBLEMS_DATA = {
+        // Shared problems data - Populated from Firestore
+        let PROBLEMS_DATA = {
             1: {
                 title: "Two Sum",
-                description: "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target. You may assume that each input has exactly one solution, and you may not use the same element twice.",
-                examples: [
-                    "Input: nums = [2,7,11,15], target = 9 \nOutput: [0,1]",
-                    "Input: nums = [3,2,4], target = 6 \nOutput: [1,2]"
-                ],
+                description: "Loading...",
                 difficulty: "Easy",
-                category: "Arrays",
-                starterCode: {
-                    javascript: `function twoSum(nums, target) {\n  // Write your JavaScript code here\n}`,
-                    python: `def two_sum(nums, target):\n    # Write your Python code here`,
-                    java: `public int[] twoSum(int[] nums, int target) {\n    // Write your Java code here\n    return new int[0];\n}`,
-                    cpp: `vector<int> twoSum(vector<int>& nums, int target) {\n    // Write your C++ code here\n    return {};\n}`,
-                },
-                testCases: [
-                    { input: [2, 7, 11, 15], target: 9, expected: [0, 1] },
-                    { input: [3, 2, 4], target: 6, expected: [1, 2] },
-                    { input: [3, 3], target: 6, expected: [0, 1] },
-                    { input: [5, 5, 1, 1], target: 10, expected: [0, 1] },
-                ],
-            },
-            2: {
-                title: "Add Two Numbers",
-                description: "You are given two non-empty linked lists representing two non-negative integers. The digits are stored in reverse order, and each of their nodes contains a single digit. Add the two numbers and return the sum as a linked list.",
-                examples: [
-                    "Input: l1 = [2,4,3], l2 = [5,6,4] \nOutput: [7,0,8] \nExplanation: 342 + 465 = 807.",
-                    "Input: l1 = [0], l2 = [0] \nOutput: [0]"
-                ],
-                difficulty: "Medium",
-                category: "Linked List",
-                starterCode: {
-                    javascript: `function addTwoNumbers(l1, l2) {\n  // Write your JavaScript code here\n}`,
-                    python: `def add_two_numbers(l1, l2):\n    # Write your Python code here`,
-                    java: `public int[] addTwoNumbers(int[] l1, int[] l2) {\n    // Write your Java code here\n    return new int[0];\n}`,
-                    cpp: `vector<int> addTwoNumbers(vector<int>& l1, vector<int>& l2) {\n    // Write your C++ code here\n    return {};\n}`,
-                },
-                testCases: [
-                    { input: { l1: [2, 4, 3], l2: [5, 6, 4] }, expected: [7, 0, 8] },
-                    { input: { l1: [0], l2: [0] }, expected: [0] },
-                    { input: { l1: [9, 9, 9, 9, 9, 9, 9], l2: [9, 9, 9, 9] }, expected: [8, 9, 9, 9, 0, 0, 0, 1] },
-                ],
-            },
-            3: {
-                title: "Longest Substring Without Repeating Characters",
-                description: "Given a string s, find the length of the longest substring without repeating characters.",
-                examples: [
-                    "Input: s = \"abcabcbb\"\nOutput: 3",
-                    "Input: s = \"bbbbb\"\nOutput: 1"
-                ],
-                difficulty: "Medium",
-                category: "Strings",
-                starterCode: {
-                    javascript: `function lengthOfLongestSubstring(s) {\n  // Write your JavaScript code here\n}`,
-                    python: `def length_of_longest_substring(s):\n    # Write your Python code here`,
-                    java: `public int lengthOfLongestSubstring(String s) {\n    // Write your Java code here\n    return 0;\n}`,
-                    cpp: `int lengthOfLongestSubstring(string s) {\n    // Write your C++ code here\n    return 0;\n}`,
-                },
-                testCases: [
-                    { input: "abcabcbb", expected: 3 },
-                    { input: "bbbbb", expected: 1 },
-                    { input: "pwwkew", expected: 3 },
-                    { input: "", expected: 0 },
-                ],
-            },
-            4: {
-                title: "Median of Two Sorted Arrays",
-                description: "Given two sorted arrays nums1 and nums2 of size m and n respectively, return the median of the two sorted arrays.",
-                examples: [
-                    "Input: nums1 = [1,3], nums2 = [2] \nOutput: 2.0",
-                    "Input: nums1 = [1,2], nums2 = [3,4] \nOutput: 2.5"
-                ],
-                difficulty: "Hard",
-                category: "Arrays",
-                starterCode: {
-                    javascript: `function findMedianSortedArrays(nums1, nums2) {\n  // Write your JavaScript code here\n}`,
-                    python: `def find_median_sorted_arrays(nums1, nums2):\n    # Write your Python code here`,
-                    java: `public double findMedianSortedArrays(int[] nums1, int[] nums2) {\n    // Write your Java code here\n    return 0.0;\n}`,
-                    cpp: `double findMedianSortedArrays(vector<int>& nums1, vector<int>& nums2) {\n    // Write your C++ code here\n    return 0.0;\n}`,
-                },
-                testCases: [
-                    { input: { nums1: [1, 3], nums2: [2] }, expected: 2.0 },
-                    { input: { nums1: [1, 2], nums2: [3, 4] }, expected: 2.5 },
-                    { input: { nums1: [0, 0], nums2: [0, 0] }, expected: 0.0 },
-                ],
-            },
-            5: {
-                title: "Reverse Linked List",
-                description: "Given the head of a singly linked list, reverse the list, and return the reversed list.",
-                examples: [
-                    "Input: head = [1,2,3,4,5] \nOutput: [5,4,3,2,1]",
-                    "Input: head = [1,2] \nOutput: [2,1]"
-                ],
-                difficulty: "Easy",
-                category: "Linked List",
-                starterCode: {
-                    javascript: `function reverseList(head) {\n  // Write your JavaScript code here\n}`,
-                    python: `def reverse_list(head):\n    # Write your Python code here`,
-                    java: `public int[] reverseList(int[] head) {\n    // Write your Java code here\n    return new int[0];\n}`,
-                    cpp: `vector<int> reverseList(vector<int>& head) {\n    // Write your C++ code here\n    return {};\n}`,
-                },
-                testCases: [
-                    { input: [1, 2, 3, 4, 5], expected: [5, 4, 3, 2, 1] },
-                    { input: [1, 2], expected: [2, 1] },
-                    { input: [], expected: [] },
-                ],
+                examples: [],
+                starterCode: { javascript: "// Loading..." },
+                testCases: []
+            }
+        };
+
+        const loadProblems = async () => {
+            if (window.dbService) {
+                try {
+                    const problems = await window.dbService.getAllProblems();
+                    if (problems && problems.length > 0) {
+                        const problemsMap = {};
+                        problems.forEach(p => {
+                            problemsMap[p.id] = p;
+                        });
+                        PROBLEMS_DATA = problemsMap;
+                        console.log('✅ Problems loaded from Firestore:', Object.keys(PROBLEMS_DATA).length);
+                        // Trigger a re-render if needed by dispatching an event or using state in App
+                        window.dispatchEvent(new CustomEvent('problems-updated'));
+                    }
+                } catch (e) {
+                    console.error("Failed to load problems:", e);
+                }
             }
         };
 
@@ -3093,103 +3025,103 @@ User question: ${newAiMessage}`;
                     console.log('Extracted room ID:', rid);
 
                     const createRoom = async () => {
-                        const ref = db.collection('battleRooms').doc();
-                        const initial = {
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                            startedAt: null,
-                            durationSeconds: 600,
-                            participants: { [myId]: { online: true, updatedAt: firebase.firestore.FieldValue.serverTimestamp() } },
-                            code: { [myId]: player1Code },
-                            problemId: 1,
-                            status: 'waiting', // waiting, active, completed
-                            createdBy: myId
-                        };
-                        await ref.set(initial, { merge: true });
-                        console.log('✅ Battle room created:', ref.id);
-                        console.log('👥 Created by user:', myId);
-                        return ref.id;
+                        if (window.dbService) {
+                            const rid = await window.dbService.createBattle(myId, 1, {
+                                code: { [myId]: player1Code },
+                                durationSeconds: 600
+                            });
+                            console.log('✅ Battle room created:', rid);
+                            return rid;
+                        }
+                        return null;
                     };
 
                     const ensureRoom = async () => {
                         if (!rid) {
-                            // choose random problem from PROBLEMS_DATA
+                            // choose random problem
                             const keys = Object.keys(PROBLEMS_DATA).map(Number);
                             const randomId = keys[Math.floor(Math.random() * keys.length)];
                             rid = await createRoom();
-                            setBattleProblemId(randomId);
+
+                            // Update problem ID in DB via service if needed, but createBattle likely handled it
+                            // Set URL
                             setIsCreator(true);
                             const newUrl = new URL(window.location.href);
                             newUrl.searchParams.set('id', rid);
                             if (window.location.protocol !== 'blob:') {
                                 window.history.replaceState({}, '', newUrl.toString());
                             }
-                            // store chosen problem
-                            await db.collection('battleRooms').doc(rid).set({ problemId: randomId }, { merge: true });
                         } else {
                             setIsCreator(false);
-                            // Join existing room and mark presence
-                            await db.collection('battleRooms').doc(rid).set({
-                                participants: { [myId]: { online: true, updatedAt: firebase.firestore.FieldValue.serverTimestamp() } },
-                            }, { merge: true });
-                            console.log('✅ Joined existing battle room:', rid);
-                            console.log('👥 Joining as user:', myId);
+                            // Join existing room
+                            if (window.dbService) {
+                                await window.dbService.joinBattle(rid, myId, "User"); // Helper name TODO
+                                console.log('✅ Joined existing battle room:', rid);
+                            }
                         }
 
                         setRoomId(rid);
 
                         // Listen to room updates
-                        unsubscribeRoom = db.collection('battleRooms').doc(rid).onSnapshot((snap) => {
-                            if (!snap.exists) return;
-                            const data = snap.data() || {};
-                            setParticipants(data.participants || {});
-                            setDurationSeconds(data.durationSeconds || 600);
-                            if (data.problemId) setBattleProblemId(data.problemId);
-                            const codeMap = data.code || {};
-                            const opponentId = Object.keys(codeMap).find(k => k !== myId);
-                            if (opponentId) {
-                                setPlayer2Code(codeMap[opponentId] || '');
-                            }
-                            // Timer handling based on startedAt
-                            const startedAt = data.startedAt ? data.startedAt.toDate ? data.startedAt.toDate() : new Date(data.startedAt) : null;
-                            if (startedAt) {
-                                startedAtRef.current = startedAt;
-                                setBattleStatus('In Progress');
-                                const tick = () => {
-                                    const now = new Date();
-                                    const elapsed = Math.floor((now - startedAtRef.current) / 1000);
-                                    const remaining = Math.max(0, (data.durationSeconds || 600) - elapsed);
-                                    setTimer(remaining);
-                                    if (remaining === 0) {
-                                        setBattleStatus('Ended');
-                                        clearInterval(intervalId);
-                                    }
-                                };
-                                clearInterval(intervalId);
-                                intervalId = setInterval(tick, 1000);
-                                tick();
-                            } else {
-                                // If two players present and no startedAt, let creator start
-                                const presentCount = Object.values(data.participants || {}).filter(p => p && p.online).length;
-                                setBattleStatus(presentCount >= 2 ? 'In Progress' : 'Waiting');
-                                if (presentCount >= 2 && isCreator) {
-                                    db.collection('battleRooms').doc(rid).set({
-                                        startedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                                        status: 'active'
-                                    }, { merge: true });
+                        if (window.dbService) {
+                            unsubscribeRoom = window.dbService.subscribeToBattle(rid, (data) => {
+                                if (!data) return;
+                                setParticipants(data.participants || {});
+                                setDurationSeconds(data.durationSeconds || 600);
+                                if (data.problemId) setBattleProblemId(data.problemId);
+
+                                // Map playerStates to code map for backward compatibility in this component
+                                const codeMap = {};
+                                if (data.playerStates) {
+                                    Object.keys(data.playerStates).forEach(uid => {
+                                        codeMap[uid] = data.playerStates[uid].code || '';
+                                    });
                                 }
-                            }
-                        });
+                                const opponentId = Object.keys(codeMap).find(k => k !== myId);
+                                if (opponentId) {
+                                    setPlayer2Code(codeMap[opponentId] || '');
+                                }
+                                // Timer handling based on startedAt
+                                const startedAt = data.startedAt ? data.startedAt.toDate ? data.startedAt.toDate() : new Date(data.startedAt) : null;
+                                if (startedAt) {
+                                    startedAtRef.current = startedAt;
+                                    setBattleStatus('In Progress');
+                                    const tick = () => {
+                                        const now = new Date();
+                                        const elapsed = Math.floor((now - startedAtRef.current) / 1000);
+                                        const remaining = Math.max(0, (data.durationSeconds || 600) - elapsed);
+                                        setTimer(remaining);
+                                        if (remaining === 0) {
+                                            setBattleStatus('Ended');
+                                            clearInterval(intervalId);
+                                        }
+                                    };
+                                    clearInterval(intervalId);
+                                    intervalId = setInterval(tick, 1000);
+                                    tick();
+                                } else {
+                                    // If two players present and no startedAt, let creator start
+                                    const presentCount = Object.values(data.participants || {}).filter(p => p && p.online).length;
+                                    setBattleStatus(presentCount >= 2 ? 'In Progress' : 'Waiting');
+                                    if (presentCount >= 2 && isCreator) {
+                                        if (window.dbService) {
+                                            window.dbService.startBattle(rid);
+                                        }
+                                    }
+                                }
+                            });
 
-                        // Mark offline on unload
-                        const handleUnload = () => {
-                            db.collection('battleRooms').doc(rid).set({
-                                participants: { [myId]: { online: false, updatedAt: firebase.firestore.FieldValue.serverTimestamp() } },
-                            }, { merge: true });
-                        };
-                        window.addEventListener('beforeunload', handleUnload);
+                            // Mark offline on unload
+                            const handleUnload = () => {
+                                if (window.dbService) {
+                                    window.dbService.leaveBattle(rid, myId);
+                                }
+                            };
+                            window.addEventListener('beforeunload', handleUnload);
 
-                        return () => {
-                            window.removeEventListener('beforeunload', handleUnload);
+                            return () => {
+                                window.removeEventListener('beforeunload', handleUnload);
+                            };
                         };
                     };
 
@@ -3210,10 +3142,9 @@ User question: ${newAiMessage}`;
                     if (!roomId || !db) return;
                     // Debounce code updates to avoid excessive Firestore writes
                     const timeoutId = setTimeout(() => {
-                        db.collection('battleRooms').doc(roomId).set({
-                            code: { [myId]: player1Code },
-                            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-                        }, { merge: true });
+                        if (window.dbService) {
+                            window.dbService.updateBattleCode(roomId, myId, player1Code);
+                        }
                     }, 500); // 500ms debounce
 
                     return () => clearTimeout(timeoutId);
@@ -3244,33 +3175,31 @@ User question: ${newAiMessage}`;
 
                 let unsubscribeCodeShare = null;
 
-                if (db && window.firebase) {
+                if (window.dbService) {
                     // Firebase listener for code sharing
-                    unsubscribeCodeShare = db.collection('battleRooms').doc(roomId)
-                        .onSnapshot((doc) => {
-                            if (!doc.exists) return;
-                            const data = doc.data();
+                    unsubscribeCodeShare = window.dbService.subscribeToCodeShare(roomId, (data) => {
+                        if (!data) return;
 
-                            // Handle code sharing updates from friend
-                            if (data.codeShare && data.codeShare.from !== myId) {
-                                if (data.codeShare.active && data.codeShare.sharedCode) {
-                                    console.log('💻 Received friend\'s code update:', data.codeShare.from);
-                                    setFriendCode(data.codeShare.sharedCode);
-                                    setIsViewingFriendCode(true);
-                                } else if (!data.codeShare.active || !data.codeShare.sharedCode) {
-                                    console.log('❌ Friend stopped sharing code');
-                                    setIsViewingFriendCode(false);
-                                    setFriendCode('');
-                                }
-                            } else if (!data.codeShare && isViewingFriendCode) {
-                                // Handle case where codeShare field is completely removed
-                                console.log('❌ Code sharing data removed from Firebase');
+                        // Handle code sharing updates from friend
+                        if (data.codeShare && data.codeShare.from !== myId) {
+                            if (data.codeShare.active && data.codeShare.sharedCode) {
+                                console.log('💻 Received friend\'s code update:', data.codeShare.from);
+                                setFriendCode(data.codeShare.sharedCode);
+                                setIsViewingFriendCode(true);
+                            } else if (!data.codeShare.active || !data.codeShare.sharedCode) {
+                                console.log('❌ Friend stopped sharing code');
                                 setIsViewingFriendCode(false);
                                 setFriendCode('');
                             }
-                        }, (error) => {
-                            console.error('❌ Code sharing listener error:', error);
-                        });
+                        } else if (!data.codeShare && isViewingFriendCode) {
+                            // Handle case where codeShare field is completely removed
+                            console.log('❌ Code sharing data removed from Firebase');
+                            setIsViewingFriendCode(false);
+                            setFriendCode('');
+                        }
+                    }, (error) => {
+                        console.error('❌ Code sharing listener error:', error);
+                    });
                 } else {
                     // localStorage fallback for local testing
                     const checkForCodeUpdates = () => {
@@ -5606,48 +5535,22 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
             // Fetch Discover Users
             useEffect(() => {
                 const fetchDiscover = async () => {
-                    if (!db || !userId) return;
+                    if (!window.dbService || !userId) return;
                     try {
-                        const snapshot = await db.collection('users').limit(20).get();
-                        const users = [];
-                        snapshot.forEach(doc => {
-                            if (doc.id !== userId) {
-                                users.push({ id: doc.id, ...doc.data() });
-                            }
-                        });
-                        // Filter out existing friends and requests (simple client-side filter for now)
-                        // In real app, might want better query or backend function
-                        setDiscoverUsers(users.filter(u =>
-                            !myFriends.some(f => f.id === u.id) &&
-                            !friendRequests.some(r => r.id === u.id)
-                        ));
+                        const users = await window.dbService.getDiscoverUsers(userId, [...myFriends.map(f => f.id), ...friendRequests.map(r => r.id)]);
+                        setDiscoverUsers(users);
                     } catch (err) {
                         console.error("Error fetching discover users:", err);
                     }
                 };
                 // Re-fetch when friends/requests change to keep discover list fresh
                 fetchDiscover();
-            }, [db, userId, myFriends.length, friendRequests.length]);
+            }, [userId, myFriends.length, friendRequests.length]);
 
             const handleAcceptRequest = async (requesterId) => {
-                if (!db || !userId) return;
+                if (!window.dbService || !userId) return;
                 try {
-                    const batch = db.batch();
-                    const myRef = db.collection('users').doc(userId);
-                    const theirRef = db.collection('users').doc(requesterId);
-
-                    // Add to my friends, remove from my requests
-                    batch.update(myRef, {
-                        friends: firebase.firestore.FieldValue.arrayUnion(requesterId),
-                        friendRequests: firebase.firestore.FieldValue.arrayRemove(requesterId)
-                    });
-
-                    // Add to their friends
-                    batch.update(theirRef, {
-                        friends: firebase.firestore.FieldValue.arrayUnion(userId)
-                    });
-
-                    await batch.commit();
+                    await window.dbService.acceptFriendRequest(userId, requesterId);
                     alert('Friend request accepted!');
                 } catch (error) {
                     console.error("Error accepting request:", error);
@@ -5656,11 +5559,9 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
             };
 
             const handleDeclineRequest = async (requesterId) => {
-                if (!db || !userId) return;
+                if (!window.dbService || !userId) return;
                 try {
-                    await db.collection('users').doc(userId).update({
-                        friendRequests: firebase.firestore.FieldValue.arrayRemove(requesterId)
-                    });
+                    await window.dbService.declineFriendRequest(userId, requesterId);
                     alert('Friend request declined.');
                 } catch (error) {
                     console.error("Error declining request:", error);
@@ -5668,12 +5569,9 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
             };
 
             const handleAddFriend = async (targetId) => {
-                if (!db || !userId) return;
+                if (!window.dbService || !userId) return;
                 try {
-                    // Add userId to target's friendRequests
-                    await db.collection('users').doc(targetId).update({
-                        friendRequests: firebase.firestore.FieldValue.arrayUnion(userId)
-                    });
+                    await window.dbService.sendFriendRequest(userId, targetId);
                     alert('Friend request sent!');
                     // Optimistically remove from discover
                     setDiscoverUsers(prev => prev.filter(u => u.id !== targetId));
@@ -5791,9 +5689,9 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                         return;
                     }
                     try {
-                        const doc = await db.collection('users').doc(targetId).get();
-                        if (doc.exists) {
-                            setProfileData({ id: doc.id, ...doc.data() });
+                        const profile = await window.dbService.getUserProfile(targetId);
+                        if (profile) {
+                            setProfileData(profile);
                         } else {
                             console.error("Profile not found");
                         }
@@ -6175,7 +6073,7 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
 
             return (
                 <div className={`flex min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}`}>
-                    {isAuthed && (
+                    {isAuthenticated && (
                         <>
                             <Navbar toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} username="CodeMaster" currentPage={currentPage} userId={userId} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} navigateTo={navigateTo} toggleProfile={toggleProfile} />
                             <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={setIsSidebarOpen} navigateTo={navigateTo} currentPage={currentPage} />
