@@ -153,13 +153,13 @@ class DatabaseService {
             ...options
         };
 
-        const ref = await this.db.collection('battles').add(battleData);
+        const ref = await this.db.collection('battleRooms').add(battleData);
         return ref.id;
     }
 
     async joinBattle(battleId, userId, username) {
         if (!this.db) throw new Error('DB not initialized');
-        const ref = this.db.collection('battles').doc(battleId);
+        const ref = this.db.collection('battleRooms').doc(battleId);
 
         await this.db.runTransaction(async (transaction) => {
             const doc = await transaction.get(ref);
@@ -187,7 +187,7 @@ class DatabaseService {
 
     subscribeToBattle(battleId, callback) {
         if (!this.db) return () => { };
-        return this.db.collection('battles').doc(battleId).onSnapshot(doc => {
+        return this.db.collection('battleRooms').doc(battleId).onSnapshot(doc => {
             if (doc.exists) callback({ id: doc.id, ...doc.data() });
             else callback(null);
         });
@@ -200,12 +200,12 @@ class DatabaseService {
         update[`playerStates.${userId}.code`] = code;
         update['lastUpdated'] = firebase.firestore.FieldValue.serverTimestamp();
 
-        await this.db.collection('battles').doc(battleId).update(update);
+        await this.db.collection('battleRooms').doc(battleId).update(update);
     }
 
     async startBattle(battleId) {
         if (!this.db) return;
-        await this.db.collection('battles').doc(battleId).update({
+        await this.db.collection('battleRooms').doc(battleId).update({
             startedAt: firebase.firestore.FieldValue.serverTimestamp(),
             status: 'active'
         });
@@ -223,7 +223,7 @@ class DatabaseService {
         // but online:false is main goal.
         // Actually, better to use merge if possible, but dot notation works best for nested updates.
         // Let's stick to dot notation for safety.
-        await this.db.collection('battles').doc(battleId).update({
+        await this.db.collection('battleRooms').doc(battleId).update({
             [`participants.${userId}.online`]: false,
             [`participants.${userId}.updatedAt`]: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -231,7 +231,7 @@ class DatabaseService {
 
     async updateCodeShare(battleId, data) {
         if (!this.db) return;
-        await this.db.collection('battles').doc(battleId).set({
+        await this.db.collection('battleRooms').doc(battleId).set({
             codeShare: {
                 ...data,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
@@ -241,7 +241,7 @@ class DatabaseService {
 
     subscribeToCodeShare(battleId, callback) {
         if (!this.db) return () => { };
-        return this.db.collection('battles').doc(battleId).onSnapshot(doc => {
+        return this.db.collection('battleRooms').doc(battleId).onSnapshot(doc => {
             if (doc.exists) callback(doc.data());
         });
     }

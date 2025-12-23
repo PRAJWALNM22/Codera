@@ -3269,7 +3269,7 @@ User question: ${newAiMessage}`;
                     const syncMyCode = async () => {
                         if (db && window.firebase) {
                             if (!roomId) return;
-                            await db.collection('battles').doc(roomId).set({
+                            await db.collection('battleRooms').doc(roomId).set({
                                 codeShare: {
                                     active: true,
                                     from: myId,
@@ -4340,7 +4340,7 @@ int main() {
                             // Priority 2: Firebase (Legacy/Backup)
                             try {
                                 // Use Firebase for global signaling - serialize the candidate properly
-                                db.collection('battles').doc(roomId).collection('iceCandidates').add({
+                                db.collection('battleRooms').doc(roomId).collection('iceCandidates').add({
                                     candidate: {
                                         candidate: event.candidate.candidate,
                                         sdpMLineIndex: event.candidate.sdpMLineIndex,
@@ -4682,7 +4682,7 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                 // Notify room that code sharing stopped
                 if (roomId) {
                     if (db && window.firebase) {
-                        db.collection('battles').doc(roomId).set({
+                        db.collection('battleRooms').doc(roomId).set({
                             codeShare: {
                                 active: false,
                                 from: myId,
@@ -4740,7 +4740,7 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                     } else if (db && window.firebase) {
                         // Priority 2: Firebase (Legacy/Backup)
                         // Use subcollection for signals
-                        await db.collection('battles').doc(roomId).collection('signals').add({
+                        await db.collection('battleRooms').doc(roomId).collection('signals').add({
                             type: 'answer',
                             payload: { sdp: answer.sdp, type: answer.type },
                             from: myId,
@@ -4798,7 +4798,7 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                         if (!roomId) throw new Error("Room ID is missing for signaling");
                         // Priority 2: Firebase (Legacy/Backup)
                         // Use subcollection for signals to prevent race conditions
-                        await db.collection('battles').doc(roomId).collection('signals').add({
+                        await db.collection('battleRooms').doc(roomId).collection('signals').add({
                             type: 'offer',
                             payload: { sdp: offer.sdp, type: offer.type },
                             from: myId,
