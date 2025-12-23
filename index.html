@@ -3068,9 +3068,34 @@ User question: ${newAiMessage}`;
                         } else {
                             setIsCreator(false);
                             // Join existing room
+                            // Join existing room
                             if (window.dbService) {
-                                await window.dbService.joinBattle(rid, myId, "User"); // Helper name TODO
-                                console.log('✅ Joined existing battle room:', rid);
+                                try {
+                                    await window.dbService.joinBattle(rid, myId, "User"); // Helper name TODO
+                                    console.log('✅ Joined existing battle room:', rid);
+                                } catch (error) {
+                                    console.error("Failed to join battle:", error);
+                                    if (error.message.includes("does not exist") || error.message.includes("finished")) {
+                                        alert("Battle room not found or finished. Creating a new room.");
+                                        // Remove invalid ID from URL
+                                        const cleanUrl = new URL(window.location.href);
+                                        cleanUrl.searchParams.delete('id');
+                                        if (window.location.protocol !== 'blob:') {
+                                            window.history.replaceState({}, '', cleanUrl.toString());
+                                        }
+                                        // Create new room
+                                        rid = await createRoom();
+                                        setIsCreator(true);
+                                        // Update URL with new ID
+                                        const newUrl = new URL(window.location.href);
+                                        newUrl.searchParams.set('id', rid);
+                                        if (window.location.protocol !== 'blob:') {
+                                            window.history.replaceState({}, '', newUrl.toString());
+                                        }
+                                    } else {
+                                        throw error; // Re-throw other errors
+                                    }
+                                }
                             }
                         }
 
