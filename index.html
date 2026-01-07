@@ -2162,70 +2162,116 @@ User question: ${newAiMessage}`;
                                 )}
                             </div>
 
-                            <div className="flex flex-wrap justify-end gap-3 mb-4">
-                                <button onClick={handleRunCode} disabled={loading} className="px-6 py-2 bg-blue-600 rounded-md">Run Code</button>
-                                <button onClick={handleSubmitCode} disabled={loading} className="px-6 py-2 bg-green-600 rounded-md">Submit</button>
-                                <button onClick={handleSaveSelectionToNotes} className="px-6 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-md text-white">Save selection to Notes</button>
-                                <button onClick={() => setShowNotes(s => !s)} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md text-white">{showNotes ? 'Hide Notes' : 'Show Notes'}</button>
+                            {/* Modern Button Bar */}
+                            <div className="flex flex-wrap justify-between items-center bg-gray-900/50 backdrop-blur-sm p-3 rounded-xl border border-gray-700 mb-6 shadow-xl">
+                                <div className="flex gap-2">
+                                    {/* Console-like or simple status text could go here, or just empty space */}
+                                </div>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={handleSaveSelectionToNotes}
+                                        className="text-gray-400 hover:text-yellow-400 transition-colors flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-800"
+                                        title="Save selected code to Notes"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                        <span className="text-sm font-medium">Save Note</span>
+                                    </button>
+                                    <button
+                                        onClick={handleRunCode}
+                                        disabled={loading}
+                                        className="flex items-center gap-2 px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
+                                    >
+                                        <svg className="w-4 h-4 text-gray-300 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <span className="font-semibold tracking-wide">Run</span>
+                                    </button>
+                                    <button
+                                        onClick={handleSubmitCode}
+                                        disabled={loading}
+                                        className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg transition-all shadow-lg shadow-green-900/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <span className="font-bold tracking-wide">Submit</span>
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Result Area */}
-                            <div className="bg-gray-700 rounded-md text-gray-200 text-sm overflow-hidden flex flex-col min-h-[150px]">
+                            {/* Result Area - DevTools Style */}
+                            <div className="bg-gray-900/80 rounded-xl overflow-hidden border border-gray-700 shadow-2xl flex flex-col min-h-[200px] mb-6 backdrop-blur-md">
                                 {submissionResults ? (
-                                    <div className="flex flex-col h-full">
-                                        <div className={`px-4 py-3 font-bold text-lg border-b border-gray-600 ${submissionResults.overallStatus === 'Accepted' ? 'text-green-400' : 'text-red-400'
-                                            }`}>
-                                            {submissionResults.overallStatus}
-                                        </div>
-
-                                        {/* Tabs for Test Cases */}
-                                        <div className="flex border-b border-gray-600 bg-gray-800 overflow-x-auto">
-                                            {submissionResults.results.map((res, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    onClick={() => setActiveResultTab(idx)}
-                                                    className={`px-4 py-2 flex items-center space-x-2 border-r border-gray-700 hover:bg-gray-700 transition ${activeResultTab === idx ? 'bg-gray-700 text-white' : 'text-gray-400'
-                                                        }`}
-                                                >
-                                                    <span className={`w-2 h-2 rounded-full ${res.status === 'Accepted' ? 'bg-green-500' : 'bg-red-500'
-                                                        }`}></span>
-                                                    <span>Case {idx + 1}</span>
-                                                </button>
-                                            ))}
+                                    <div className="flex flex-col md:flex-row h-full">
+                                        {/* Status Sidebar / Topbar */}
+                                        <div className="w-full md:w-48 bg-gray-800/50 border-b md:border-b-0 md:border-r border-gray-700 flex flex-col">
+                                            <div className={`p-4 font-bold text-lg text-center md:text-left tracking-wide ${submissionResults.overallStatus === 'Accepted' ? 'text-green-400' : 'text-red-400'
+                                                }`}>
+                                                {submissionResults.overallStatus}
+                                            </div>
+                                            <div className="flex md:flex-col overflow-x-auto md:overflow-y-auto custom-scrollbar">
+                                                {submissionResults.results.map((res, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        onClick={() => setActiveResultTab(idx)}
+                                                        className={`px-4 py-3 flex items-center space-x-3 hover:bg-gray-700/50 transition-all border-l-4 ${activeResultTab === idx
+                                                            ? (res.status === 'Accepted' ? 'bg-gray-700/60 border-green-500' : 'bg-gray-700/60 border-red-500 text-red-200')
+                                                            : 'border-transparent text-gray-400 hover:text-gray-200'
+                                                            }`}
+                                                    >
+                                                        <span className={`w-2.5 h-2.5 rounded-full shadow-gold ${res.status === 'Accepted' ? 'bg-green-500 shadow-green-500/50' : 'bg-red-500 shadow-red-500/50'
+                                                            }`}></span>
+                                                        <span className="font-mono text-sm">Case {idx + 1}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
 
                                         {/* Active Tab Content */}
-                                        <div className="p-4 flex-grow overflow-auto">
+                                        <div className="flex-1 p-6 overflow-auto custom-scrollbar bg-gray-900/50">
                                             {submissionResults.results[activeResultTab] && (
-                                                <div className="space-y-4">
+                                                <div className="space-y-6">
                                                     {submissionResults.results[activeResultTab].status !== 'Accepted' && submissionResults.results[activeResultTab].error ? (
-                                                        <div className="text-red-300 bg-red-900/30 p-3 rounded border border-red-700">
-                                                            <div className="font-semibold mb-1">Error:</div>
-                                                            <pre className="whitespace-pre-wrap font-mono text-xs">{submissionResults.results[activeResultTab].error}</pre>
+                                                        <div className="group relative">
+                                                            <div className="absolute -inset-0.5 bg-gradient-to-r from-red-600 to-pink-600 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                                                            <div className="relative bg-gray-900 p-4 rounded-lg border border-red-500/30">
+                                                                <div className="font-semibold text-red-400 mb-2 flex items-center gap-2">
+                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                                    Runtime Error
+                                                                </div>
+                                                                <pre className="whitespace-pre-wrap font-mono text-xs text-red-200">{submissionResults.results[activeResultTab].error}</pre>
+                                                            </div>
                                                         </div>
                                                     ) : null}
 
-                                                    <div>
-                                                        <div className="text-gray-400 text-xs uppercase font-semibold mb-1">Input</div>
-                                                        <div className="bg-gray-800 p-3 rounded font-mono text-gray-100">
-                                                            {JSON.stringify(submissionResults.results[activeResultTab].input, null, 2)}
+                                                    <div className="grid grid-cols-1 gap-6">
+                                                        <div className="space-y-2">
+                                                            <div className="text-gray-400 text-xs uppercase font-bold tracking-wider flex items-center gap-2">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Input
+                                                            </div>
+                                                            <div className="bg-gray-950/50 p-4 rounded-lg border border-gray-800 font-mono text-gray-300 text-sm shadow-inner">
+                                                                {JSON.stringify(submissionResults.results[activeResultTab].input, null, 2)}
+                                                            </div>
                                                         </div>
-                                                    </div>
 
-                                                    <div>
-                                                        <div className="text-gray-400 text-xs uppercase font-semibold mb-1">Output</div>
-                                                        <div className={`p-3 rounded font-mono text-gray-100 ${submissionResults.results[activeResultTab].status === 'Accepted' ? 'bg-gray-800' : 'bg-red-900/20 border border-red-800'
-                                                            }`}>
-                                                            {submissionResults.results[activeResultTab].actual !== null
-                                                                ? JSON.stringify(submissionResults.results[activeResultTab].actual)
-                                                                : <span className="text-gray-500 italic">No output</span>}
+                                                        <div className="space-y-2">
+                                                            <div className="text-gray-400 text-xs uppercase font-bold tracking-wider flex items-center gap-2">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div> Output
+                                                            </div>
+                                                            <div className={`p-4 rounded-lg border font-mono text-sm shadow-inner transition-colors ${submissionResults.results[activeResultTab].status === 'Accepted'
+                                                                ? 'bg-gray-950/50 border-gray-800 text-gray-300'
+                                                                : 'bg-red-900/10 border-red-900/30 text-red-200'
+                                                                }`}>
+                                                                {submissionResults.results[activeResultTab].actual !== null
+                                                                    ? JSON.stringify(submissionResults.results[activeResultTab].actual)
+                                                                    : <span className="text-gray-500 italic">No output</span>}
+                                                            </div>
                                                         </div>
-                                                    </div>
 
-                                                    <div>
-                                                        <div className="text-gray-400 text-xs uppercase font-semibold mb-1">Expected</div>
-                                                        <div className="bg-gray-800 p-3 rounded font-mono text-gray-100">
-                                                            {JSON.stringify(submissionResults.results[activeResultTab].expected)}
+                                                        <div className="space-y-2">
+                                                            <div className="text-gray-400 text-xs uppercase font-bold tracking-wider flex items-center gap-2">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> Expected
+                                                            </div>
+                                                            <div className="bg-gray-950/50 p-4 rounded-lg border border-gray-800 font-mono text-gray-300 text-sm shadow-inner">
+                                                                {JSON.stringify(submissionResults.results[activeResultTab].expected)}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -2233,9 +2279,11 @@ User question: ${newAiMessage}`;
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="p-3">
-                                        <h3 className="font-medium text-white mb-1">Output:</h3>
-                                        <pre>{output || <span className="text-gray-500 italic">Run code or sumbit to see results...</span>}</pre>
+                                    <div className="p-8 flex flex-col items-center justify-center h-full min-h-[200px] text-gray-500 space-y-4">
+                                        <div className="w-16 h-16 rounded-full bg-gray-800/50 flex items-center justify-center">
+                                            <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        </div>
+                                        <p className="text-sm font-medium">Run your code to see results</p>
                                     </div>
                                 )}
                             </div>
@@ -3010,6 +3058,8 @@ User question: ${newAiMessage}`;
             const [player2Code, setPlayer2Code] = useState(`function twoSum(nums, target) {\n  // Your opponent's code (synced)\n}`);
             const [player1Output, setPlayer1Output] = useState("");
             const [player2Output, setPlayer2Output] = useState("");
+            const [submissionResults, setSubmissionResults] = useState(null);
+            const [activeResultTab, setActiveResultTab] = useState(0);
             const [timer, setTimer] = useState(600); // remaining seconds
             // Initialize chat messages with persistence
             const [chatMessages, setChatMessages] = useState(() => {
@@ -5271,27 +5321,129 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                                     )}
                                 </div>
 
-                                <div className="flex flex-wrap justify-end gap-2 mb-3">
-                                    <button
-                                        onClick={() => handleRunCode(1)}
-                                        className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-md transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        disabled={battleStatus === "Ended" || loading}
-                                    >
-                                        {loading ? 'Running...' : 'Run Code'}
-                                    </button>
-                                    <button
-                                        onClick={() => handleSubmitCode(1)}
-                                        className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md shadow-md transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500"
-                                        disabled={battleStatus === "Ended" || loading}
-                                    >
-                                        Submit
-                                    </button>
-                                    <button onClick={handleSaveSelectionToNotes} className="px-5 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-md shadow-md">Save selection to Notes</button>
-                                    <button onClick={() => setShowNotes(s => !s)} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md shadow-md">{showNotes ? 'Hide Notes' : 'Show Notes'}</button>
+                                {/* Buttons - Modern Design */}
+                                <div className="flex flex-wrap justify-between items-center bg-gray-900/50 backdrop-blur-sm p-3 rounded-xl border border-gray-700 mb-6 shadow-xl">
+                                    <div className="flex gap-2">
+                                        {/* Status or spacers could go here */}
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={handleSaveSelectionToNotes}
+                                            className="text-gray-400 hover:text-yellow-400 transition-colors flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-800"
+                                            title="Save selected code to Notes"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                            <span className="text-sm font-medium">Save Note</span>
+                                        </button>
+                                        <button
+                                            onClick={() => handleRunCode(1)}
+                                            disabled={battleStatus === "Ended" || loading}
+                                            className="flex items-center gap-2 px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
+                                        >
+                                            <svg className="w-4 h-4 text-gray-300 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            <span className="font-semibold tracking-wide">Run</span>
+                                        </button>
+                                        <button
+                                            onClick={() => handleSubmitCode(1)}
+                                            disabled={battleStatus === "Ended" || loading}
+                                            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg transition-all shadow-lg shadow-green-900/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            <span className="font-bold tracking-wide">Submit</span>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="bg-gray-700 p-3 rounded-md text-gray-200 text-sm min-h-[80px] overflow-auto">
-                                    <h3 className="font-medium text-white mb-1">Output:</h3>
-                                    <pre className="whitespace-pre-wrap">{player1Output}</pre>
+
+                                {/* Result Area - DevTools Style */}
+                                <div className="bg-gray-900/80 rounded-xl overflow-hidden border border-gray-700 shadow-2xl flex flex-col min-h-[200px] mb-6 backdrop-blur-md">
+                                    {submissionResults ? (
+                                        <div className="flex flex-col md:flex-row h-full">
+                                            {/* Status Sidebar / Topbar */}
+                                            <div className="w-full md:w-48 bg-gray-800/50 border-b md:border-b-0 md:border-r border-gray-700 flex flex-col">
+                                                <div className={`p-4 font-bold text-lg text-center md:text-left tracking-wide ${submissionResults.overallStatus === 'Accepted' ? 'text-green-400' : 'text-red-400'
+                                                    }`}>
+                                                    {submissionResults.overallStatus}
+                                                </div>
+                                                <div className="flex md:flex-col overflow-x-auto md:overflow-y-auto custom-scrollbar">
+                                                    {submissionResults.results.map((res, idx) => (
+                                                        <button
+                                                            key={idx}
+                                                            onClick={() => setActiveResultTab(idx)}
+                                                            className={`px-4 py-3 flex items-center space-x-3 hover:bg-gray-700/50 transition-all border-l-4 ${activeResultTab === idx
+                                                                ? (res.status === 'Accepted' ? 'bg-gray-700/60 border-green-500' : 'bg-gray-700/60 border-red-500 text-red-200')
+                                                                : 'border-transparent text-gray-400 hover:text-gray-200'
+                                                                }`}
+                                                        >
+                                                            <span className={`w-2.5 h-2.5 rounded-full shadow-gold ${res.status === 'Accepted' ? 'bg-green-500 shadow-green-500/50' : 'bg-red-500 shadow-red-500/50'
+                                                                }`}></span>
+                                                            <span className="font-mono text-sm">Case {idx + 1}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Active Tab Content */}
+                                            <div className="flex-1 p-6 overflow-auto custom-scrollbar bg-gray-900/50">
+                                                {submissionResults.results[activeResultTab] && (
+                                                    <div className="space-y-6">
+                                                        {submissionResults.results[activeResultTab].status !== 'Accepted' && submissionResults.results[activeResultTab].error ? (
+                                                            <div className="group relative">
+                                                                <div className="absolute -inset-0.5 bg-gradient-to-r from-red-600 to-pink-600 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                                                                <div className="relative bg-gray-900 p-4 rounded-lg border border-red-500/30">
+                                                                    <div className="font-semibold text-red-400 mb-2 flex items-center gap-2">
+                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                                        Runtime Error
+                                                                    </div>
+                                                                    <pre className="whitespace-pre-wrap font-mono text-xs text-red-200">{submissionResults.results[activeResultTab].error}</pre>
+                                                                </div>
+                                                            </div>
+                                                        ) : null}
+
+                                                        <div className="grid grid-cols-1 gap-6">
+                                                            <div className="space-y-2">
+                                                                <div className="text-gray-400 text-xs uppercase font-bold tracking-wider flex items-center gap-2">
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Input
+                                                                </div>
+                                                                <div className="bg-gray-950/50 p-4 rounded-lg border border-gray-800 font-mono text-gray-300 text-sm shadow-inner">
+                                                                    {JSON.stringify(submissionResults.results[activeResultTab].input, null, 2)}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="space-y-2">
+                                                                <div className="text-gray-400 text-xs uppercase font-bold tracking-wider flex items-center gap-2">
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div> Output
+                                                                </div>
+                                                                <div className={`p-4 rounded-lg border font-mono text-sm shadow-inner transition-colors ${submissionResults.results[activeResultTab].status === 'Accepted'
+                                                                        ? 'bg-gray-950/50 border-gray-800 text-gray-300'
+                                                                        : 'bg-red-900/10 border-red-900/30 text-red-200'
+                                                                    }`}>
+                                                                    {submissionResults.results[activeResultTab].actual !== null
+                                                                        ? JSON.stringify(submissionResults.results[activeResultTab].actual)
+                                                                        : <span className="text-gray-500 italic">No output</span>}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="space-y-2">
+                                                                <div className="text-gray-400 text-xs uppercase font-bold tracking-wider flex items-center gap-2">
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> Expected
+                                                                </div>
+                                                                <div className="bg-gray-950/50 p-4 rounded-lg border border-gray-800 font-mono text-gray-300 text-sm shadow-inner">
+                                                                    {JSON.stringify(submissionResults.results[activeResultTab].expected)}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="p-8 flex flex-col items-center justify-center h-full min-h-[200px] text-gray-500 space-y-4">
+                                            <div className="w-16 h-16 rounded-full bg-gray-800/50 flex items-center justify-center">
+                                                <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            </div>
+                                            <p className="text-sm font-medium">Run your code to see results</p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {showNotes && (
