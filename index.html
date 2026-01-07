@@ -1370,6 +1370,8 @@ If still not working, the issue is likely network/firewall related.`;
             // Output & loading
             const [output, setOutput] = useState("");
             const [loading, setLoading] = useState(false);
+            const [submissionResults, setSubmissionResults] = useState(null);
+            const [activeResultTab, setActiveResultTab] = useState(0);
 
             // Tabs
             const [activeTab, setActiveTab] = useState("Description");
@@ -1753,7 +1755,9 @@ int main() {
             // Replace handleSubmitCode with Judge0 + test cases
             const handleSubmitCode = async () => {
                 setLoading(true);
-                setOutput("Submitting solution via Judge0...");
+                // Clear previous simple output when submitting
+                setOutput("");
+                setSubmissionResults(null);
 
                 const languageMap = {
                     javascript: 63, // Node.js
@@ -1762,7 +1766,8 @@ int main() {
                     cpp: 54,        // C++ 17
                 };
 
-                let results = [];
+                let newResults = [];
+                let allPassed = true;
 
                 for (let i = 0; i < problem.testCases.length; i++) {
                     const test = problem.testCases[i];
@@ -1771,11 +1776,11 @@ int main() {
                     let wrappedCode = "";
 
                     // Get function name based on problem
-                    const functionName = problemId === 1 ? 'twoSum' :
-                        problemId === 2 ? 'addTwoNumbers' :
-                            problemId === 3 ? 'lengthOfLongestSubstring' :
-                                problemId === 4 ? 'findMedianSortedArrays' :
-                                    problemId === 5 ? 'reverseList' : 'twoSum';
+                    const functionName = problemId == 1 ? 'twoSum' :
+                        problemId == 2 ? 'addTwoNumbers' :
+                            problemId == 3 ? 'lengthOfLongestSubstring' :
+                                problemId == 4 ? 'findMedianSortedArrays' :
+                                    problemId == 5 ? 'reverseList' : 'twoSum';
 
                     const pythonFunctionName = problemId == 1 ? 'two_sum' :
                         problemId == 2 ? 'add_two_numbers' :
@@ -1874,18 +1879,13 @@ int main() {
 ${code}
 
 // Auto-call the function with test case
-console.log(JSON.stringify(${functionCall}));
-`;
-                    } else if (selectedLanguage === "javascript") {
-                        wrappedCode = `${code}
-
-// Auto-call the function with test case
 try {
     const result = ${functionCall};
     console.log(JSON.stringify(result));
 } catch (error) {
     console.error(error.message);
-}`;
+}
+`;
                     } else if (selectedLanguage === "python") {
                         wrappedCode = `${code}
 
@@ -1961,17 +1961,11 @@ int main() {
         cerr << "Error: " << e.what() << endl;
     }
     return 0;
-}`;
+}
+`;
                     }
 
-
                     try {
-                        const submission = {
-                            source_code: wrappedCode,
-                            language_id: languageMap[selectedLanguage],
-                            stdin: "",
-                        };
-
                         const res = await fetch(
                             "/api/judge",
                             {
@@ -1989,27 +1983,68 @@ int main() {
 
                         const result = await res.json();
 
-                        let verdict = "Wrong Answer";
+                        let pStatus = "Wrong Answer";
+                        let userOutput = null;
+                        let errorMsg = null;
+
                         if (result.stdout) {
-                            const userOutput = JSON.parse(atob(result.stdout).trim());
-                            verdict =
-                                JSON.stringify(userOutput) === JSON.stringify(test.expected)
-                                    ? "Passed"
-                                    : `Failed (Expected ${JSON.stringify(test.expected)}, Got ${JSON.stringify(userOutput)})`;
+                            try {
+                                const rawOutput = atob(result.stdout).trim();
+                                // Try to parse if it looks like JSON/Array, otherwise keep string
+                                try {
+                                    userOutput = JSON.parse(rawOutput);
+                                } catch (e) {
+                                    userOutput = rawOutput; // Fallback for plain strings
+                                }
+
+                                // Comparison logic needs to be robust for arrays vs strings
+                                const isEqual = JSON.stringify(userOutput) === JSON.stringify(test.expected);
+                                if (isEqual) {
+                                    pStatus = "Accepted";
+                                } else {
+                                    pStatus = "Wrong Answer";
+                                    allPassed = false;
+                                }
+                            } catch (e) {
+                                pStatus = "Runtime Error";
+                                errorMsg = "Output format error";
+                                allPassed = false;
+                            }
                         } else if (result.stderr) {
-                            verdict = "Runtime Error: " + atob(result.stderr);
+                            pStatus = "Runtime Error";
+                            errorMsg = atob(result.stderr);
+                            allPassed = false;
                         } else if (result.compile_output) {
-                            verdict = "Compilation Error: " + atob(result.compile_output);
+                            pStatus = "Compilation Error";
+                            errorMsg = atob(result.compile_output);
+                            allPassed = false;
                         }
 
-                        results.push(`Test Case ${i + 1}: ${verdict}`);
+                        newResults.push({
+                            testCaseId: i + 1,
+                            status: pStatus,
+                            input: test.input,
+                            expected: test.expected,
+                            actual: userOutput,
+                            error: errorMsg
+                        });
+
                     } catch (err) {
-                        results.push(`Test Case ${i + 1}: Error - ${err.message}`);
+                        newResults.push({
+                            testCaseId: i + 1,
+                            status: "Runtime Error",
+                            error: err.message
+                        });
+                        allPassed = false;
                     }
                 }
 
-                setOutput(results.join("\n"));
+                setSubmissionResults({
+                    overallStatus: allPassed ? "Accepted" : "Wrong Answer", // Simplified, could be RE/TLE
+                    results: newResults
+                });
                 setLoading(false);
+                setActiveResultTab(0); // Reset to first tab
             };
 
 
@@ -2134,9 +2169,75 @@ User question: ${newAiMessage}`;
                                 <button onClick={() => setShowNotes(s => !s)} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md text-white">{showNotes ? 'Hide Notes' : 'Show Notes'}</button>
                             </div>
 
-                            <div className="bg-gray-700 p-3 rounded-md text-gray-200 text-sm min-h-[100px] overflow-auto">
-                                <h3 className="font-medium text-white mb-1">Output:</h3>
-                                <pre>{output}</pre>
+                            {/* Result Area */}
+                            <div className="bg-gray-700 rounded-md text-gray-200 text-sm overflow-hidden flex flex-col min-h-[150px]">
+                                {submissionResults ? (
+                                    <div className="flex flex-col h-full">
+                                        <div className={`px-4 py-3 font-bold text-lg border-b border-gray-600 ${submissionResults.overallStatus === 'Accepted' ? 'text-green-400' : 'text-red-400'
+                                            }`}>
+                                            {submissionResults.overallStatus}
+                                        </div>
+
+                                        {/* Tabs for Test Cases */}
+                                        <div className="flex border-b border-gray-600 bg-gray-800 overflow-x-auto">
+                                            {submissionResults.results.map((res, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => setActiveResultTab(idx)}
+                                                    className={`px-4 py-2 flex items-center space-x-2 border-r border-gray-700 hover:bg-gray-700 transition ${activeResultTab === idx ? 'bg-gray-700 text-white' : 'text-gray-400'
+                                                        }`}
+                                                >
+                                                    <span className={`w-2 h-2 rounded-full ${res.status === 'Accepted' ? 'bg-green-500' : 'bg-red-500'
+                                                        }`}></span>
+                                                    <span>Case {idx + 1}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {/* Active Tab Content */}
+                                        <div className="p-4 flex-grow overflow-auto">
+                                            {submissionResults.results[activeResultTab] && (
+                                                <div className="space-y-4">
+                                                    {submissionResults.results[activeResultTab].status !== 'Accepted' && submissionResults.results[activeResultTab].error ? (
+                                                        <div className="text-red-300 bg-red-900/30 p-3 rounded border border-red-700">
+                                                            <div className="font-semibold mb-1">Error:</div>
+                                                            <pre className="whitespace-pre-wrap font-mono text-xs">{submissionResults.results[activeResultTab].error}</pre>
+                                                        </div>
+                                                    ) : null}
+
+                                                    <div>
+                                                        <div className="text-gray-400 text-xs uppercase font-semibold mb-1">Input</div>
+                                                        <div className="bg-gray-800 p-3 rounded font-mono text-gray-100">
+                                                            {JSON.stringify(submissionResults.results[activeResultTab].input, null, 2)}
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <div className="text-gray-400 text-xs uppercase font-semibold mb-1">Output</div>
+                                                        <div className={`p-3 rounded font-mono text-gray-100 ${submissionResults.results[activeResultTab].status === 'Accepted' ? 'bg-gray-800' : 'bg-red-900/20 border border-red-800'
+                                                            }`}>
+                                                            {submissionResults.results[activeResultTab].actual !== null
+                                                                ? JSON.stringify(submissionResults.results[activeResultTab].actual)
+                                                                : <span className="text-gray-500 italic">No output</span>}
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <div className="text-gray-400 text-xs uppercase font-semibold mb-1">Expected</div>
+                                                        <div className="bg-gray-800 p-3 rounded font-mono text-gray-100">
+                                                            {JSON.stringify(submissionResults.results[activeResultTab].expected)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="p-3">
+                                        <h3 className="font-medium text-white mb-1">Output:</h3>
+                                        <pre>{output || <span className="text-gray-500 italic">Run code or sumbit to see results...</span>}</pre>
+                                    </div>
+                                )}
                             </div>
 
                             {showNotes && (
