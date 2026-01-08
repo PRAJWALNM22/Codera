@@ -6117,7 +6117,9 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
 
             useEffect(() => {
                 const fetchProfile = async () => {
-                    if (!db || !targetId) {
+                    if (!db) return; // Wait for db connection
+                    
+                    if (!targetId) {
                         setLoading(false);
                         return;
                     }
@@ -6127,6 +6129,7 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                             setProfileData({ id: doc.id, ...doc.data() });
                         } else {
                             console.error("Profile not found");
+                            setProfileData(null);
                         }
                     } catch (error) {
                         console.error("Error fetching profile:", error);
@@ -6192,25 +6195,25 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                 <div className="p-8 pt-24 pl-28 lg:pl-28 min-h-screen bg-gray-900 text-gray-100 font-inter">
                     <div className="bg-gray-800 p-8 rounded-lg shadow-lg border border-indigo-700 max-w-4xl mx-auto">
                         <div className="flex items-center space-x-6 mb-8">
-                            <img src={`https://placehold.co/120x120/FF7700/FFFFFF?text=${userProfile.username.substring(0, 2)}`} alt="Profile Avatar" className="w-32 h-32 rounded-full border-4 border-indigo-500" />
+                            <img src={`https://placehold.co/120x120/FF7700/FFFFFF?text=${username.substring(0, 2)}`} alt="Profile Avatar" className="w-32 h-32 rounded-full border-4 border-indigo-500" />
                             <div>
-                                <h1 className="text-4xl font-bold text-indigo-400">{userProfile.username}</h1>
-                                <p className="text-gray-300 text-lg mt-1">{userProfile.codingLevel}</p>
-                                <p className="text-gray-400 mt-2">{userProfile.bio}</p>
+                                <h1 className="text-4xl font-bold text-indigo-400">{username}</h1>
+                                <p className="text-gray-300 text-lg mt-1">{codingLevel}</p>
+                                <p className="text-gray-400 mt-2">{bio}</p>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                             <div className="bg-gray-700 p-4 rounded-md shadow-inner">
                                 <h3 className="text-xl font-semibold text-white mb-2">Stats</h3>
-                                <p className="text-gray-300">Current Streak: <span className="font-bold text-orange-400">{userProfile.streakCount} Days</span></p>
-                                <p className="text-gray-300">Problems Solved: <span className="font-bold text-green-400">150</span></p>
-                                <p className="text-gray-300">Battles Won: <span className="font-bold text-blue-400">75</span></p>
+                                <p className="text-gray-300">Current Streak: <span className="font-bold text-orange-400">{stats.streakCount || 0} Days</span></p>
+                                <p className="text-gray-300">Problems Solved: <span className="font-bold text-green-400">{stats.practiceSolved || 0}</span></p>
+                                <p className="text-gray-300">Battles Won: <span className="font-bold text-blue-400">{stats.wins || 0}</span></p>
                             </div>
                             <div className="bg-gray-700 p-4 rounded-md shadow-inner">
                                 <h3 className="text-xl font-semibold text-white mb-2">Badges</h3>
                                 <div className="flex flex-wrap gap-2 mt-2">
-                                    {userProfile.badges.map((badge, index) => (
+                                    {badges.map((badge, index) => (
                                         <span key={index} className="px-3 py-1 bg-green-600 text-green-100 text-sm font-medium rounded-full">
                                             {badge}
                                         </span>
@@ -6231,7 +6234,7 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                                 </>
                             ) : (
                                 <>
-                                    {!userProfile.isFriend ? (
+                                    {!profileData.isFriend ? (
                                         <button onClick={handleAddFriend} className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md shadow-md transition duration-200">
                                             Add Friend
                                         </button>
