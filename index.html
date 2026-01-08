@@ -1513,106 +1513,134 @@ If still not working, the issue is likely network/firewall related.`;
             // Simulate running code
             // Replace handleRunCode with Judge0 API call
             const handleRunCode = async () => {
-                setLoading(true);
-                setOutput("Running code with Judge0...");
+                try {
+                    console.log('🚀 Run button clicked in practice mode');
+                    setLoading(true);
+                    setSubmissionResults(null); // Clear previous submission results
+                    setOutput("Running code with Judge0...");
 
-                const languageMap = {
-                    javascript: 63, // Node.js
-                    python: 71,     // Python 3
-                    java: 62,       // Java
-                    cpp: 54,        // C++ 17
-                };
-
-                // Run with the first test case only for "Run Code"
-                const test = problem.testCases[0];
-
-                // Get function name based on problem
-                const functionName = problemId == 1 ? 'twoSum' :
-                    problemId == 2 ? 'addTwoNumbers' :
-                        problemId == 3 ? 'lengthOfLongestSubstring' :
-                            problemId == 4 ? 'findMedianSortedArrays' :
-                                problemId == 5 ? 'reverseList' : 'twoSum';
-
-                const pythonFunctionName = problemId == 1 ? 'two_sum' :
-                    problemId == 2 ? 'add_two_numbers' :
-                        problemId == 3 ? 'length_of_longest_substring' :
-                            problemId == 4 ? 'find_median_sorted_arrays' :
-                                problemId == 5 ? 'reverse_list' : 'two_sum';
-
-                const javaFunctionName = problemId == 1 ? 'twoSum' :
-                    problemId == 2 ? 'addTwoNumbers' :
-                        problemId == 3 ? 'lengthOfLongestSubstring' :
-                            problemId == 4 ? 'findMedianSortedArrays' :
-                                problemId == 5 ? 'reverseList' : 'twoSum';
-
-                const cppFunctionName = problemId == 1 ? 'twoSum' :
-                    problemId == 2 ? 'addTwoNumbers' :
-                        problemId == 3 ? 'lengthOfLongestSubstring' :
-                            problemId == 4 ? 'findMedianSortedArrays' :
-                                problemId == 5 ? 'reverseList' : 'twoSum';
-
-                // Handle different parameter structures for different problems
-                let functionCall = "";
-
-                if (problemId == 1) {
-                    // Two Sum: twoSum(nums, target)
-                    if (selectedLanguage === "javascript") {
-                        functionCall = `${functionName}(${JSON.stringify(test.input)}, ${test.target})`;
-                    } else if (selectedLanguage === "python") {
-                        functionCall = `${pythonFunctionName}(${JSON.stringify(test.input)}, ${test.target})`;
-                    } else if (selectedLanguage === "java") {
-                        functionCall = `${javaFunctionName}(new int[]{${test.input.join(',')}}, ${test.target})`;
-                    } else if (selectedLanguage === "cpp") {
-                        functionCall = `${cppFunctionName}({${test.input.join(',')}}, ${test.target})`;
+                    // Get the current code from the editor
+                    const currentCode = editorRef.current ? editorRef.current.getValue() : code;
+                    
+                    if (!currentCode || currentCode.trim() === '') {
+                        setOutput("Error: No code to run. Please write some code in the editor.");
+                        setLoading(false);
+                        return;
                     }
-                } else if (problemId == 2) {
-                    // Add Two Numbers: addTwoNumbers(l1, l2)
-                    if (selectedLanguage === "javascript") {
-                        functionCall = `${functionName}(${JSON.stringify(test.input.l1)}, ${JSON.stringify(test.input.l2)})`;
-                    } else if (selectedLanguage === "python") {
-                        functionCall = `${pythonFunctionName}(${JSON.stringify(test.input.l1)}, ${JSON.stringify(test.input.l2)})`;
-                    } else if (selectedLanguage === "java") {
-                        functionCall = `${javaFunctionName}(new int[]{${test.input.l1.join(',')}}, new int[]{${test.input.l2.join(',')}})`;
-                    } else if (selectedLanguage === "cpp") {
-                        functionCall = `${cppFunctionName}({${test.input.l1.join(',')}}, {${test.input.l2.join(',')}})`;
-                    }
-                } else if (problemId == 3) {
-                    // Longest Substring: lengthOfLongestSubstring(s)
-                    if (selectedLanguage === "javascript") {
-                        functionCall = `${functionName}(${JSON.stringify(test.input)})`;
-                    } else if (selectedLanguage === "python") {
-                        functionCall = `${pythonFunctionName}(${JSON.stringify(test.input)})`;
-                    } else if (selectedLanguage === "java") {
-                        functionCall = `${javaFunctionName}("${test.input}")`;
-                    } else if (selectedLanguage === "cpp") {
-                        functionCall = `${cppFunctionName}("${test.input}")`;
-                    }
-                } else if (problemId == 4) {
-                    // Median of Arrays: findMedianSortedArrays(nums1, nums2)
-                    if (selectedLanguage === "javascript") {
-                        functionCall = `${functionName}(${JSON.stringify(test.input.nums1)}, ${JSON.stringify(test.input.nums2)})`;
-                    } else if (selectedLanguage === "python") {
-                        functionCall = `${pythonFunctionName}(${JSON.stringify(test.input.nums1)}, ${JSON.stringify(test.input.nums2)})`;
-                    } else if (selectedLanguage === "java") {
-                        functionCall = `${javaFunctionName}(new int[]{${test.input.nums1.join(',')}}, new int[]{${test.input.nums2.join(',')}})`;
-                    } else if (selectedLanguage === "cpp") {
-                        functionCall = `${cppFunctionName}({${test.input.nums1.join(',')}}, {${test.input.nums2.join(',')}})`;
-                    }
-                } else if (problemId == 5) {
-                    // Reverse List: reverseList(head)
-                    if (selectedLanguage === "javascript") {
-                        functionCall = `${functionName}(${JSON.stringify(test.input)})`;
-                    } else if (selectedLanguage === "python") {
-                        functionCall = `${pythonFunctionName}(${JSON.stringify(test.input)})`;
-                    } else if (selectedLanguage === "java") {
-                        functionCall = `${javaFunctionName}(new int[]{${test.input.join(',')}})`;
-                    } else if (selectedLanguage === "cpp") {
-                        functionCall = `${cppFunctionName}({${test.input.join(',')}})`;
-                    }
-                }
 
-                // Fallback: if functionCall is still empty, use a default
-                if (!functionCall) {
+                    // Ensure problemId is a number
+                    const numProblemId = parseInt(problemId, 10) || 1;
+
+                    const languageMap = {
+                        javascript: 63, // Node.js
+                        python: 71,     // Python 3
+                        java: 62,       // Java
+                        cpp: 54,        // C++ 17
+                    };
+
+                    // Validate problem and test cases
+                    if (!problem || !problem.testCases || problem.testCases.length === 0) {
+                        setOutput("Error: Problem data not available.");
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Run with the first test case only for "Run Code"
+                    const test = problem.testCases[0];
+                    
+                    if (!test) {
+                        setOutput("Error: Test case not available.");
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Get function name based on problem
+                    const functionName = numProblemId === 1 ? 'twoSum' :
+                        numProblemId === 2 ? 'addTwoNumbers' :
+                            numProblemId === 3 ? 'lengthOfLongestSubstring' :
+                                numProblemId === 4 ? 'findMedianSortedArrays' :
+                                    numProblemId === 5 ? 'reverseList' : 'twoSum';
+
+                    const pythonFunctionName = numProblemId === 1 ? 'two_sum' :
+                        numProblemId === 2 ? 'add_two_numbers' :
+                            numProblemId === 3 ? 'length_of_longest_substring' :
+                                numProblemId === 4 ? 'find_median_sorted_arrays' :
+                                    numProblemId === 5 ? 'reverse_list' : 'two_sum';
+
+                    const javaFunctionName = numProblemId === 1 ? 'twoSum' :
+                        numProblemId === 2 ? 'addTwoNumbers' :
+                            numProblemId === 3 ? 'lengthOfLongestSubstring' :
+                                numProblemId === 4 ? 'findMedianSortedArrays' :
+                                    numProblemId === 5 ? 'reverseList' : 'twoSum';
+
+                    const cppFunctionName = numProblemId === 1 ? 'twoSum' :
+                        numProblemId === 2 ? 'addTwoNumbers' :
+                            numProblemId === 3 ? 'lengthOfLongestSubstring' :
+                                numProblemId === 4 ? 'findMedianSortedArrays' :
+                                    numProblemId === 5 ? 'reverseList' : 'twoSum';
+
+                    // Handle different parameter structures for different problems
+                    let functionCall = "";
+
+                    if (numProblemId === 1) {
+                        // Two Sum: twoSum(nums, target)
+                        if (selectedLanguage === "javascript") {
+                            functionCall = `${functionName}(${JSON.stringify(test.input)}, ${test.target})`;
+                        } else if (selectedLanguage === "python") {
+                            functionCall = `${pythonFunctionName}(${JSON.stringify(test.input)}, ${test.target})`;
+                        } else if (selectedLanguage === "java") {
+                            functionCall = `${javaFunctionName}(new int[]{${test.input.join(',')}}, ${test.target})`;
+                        } else if (selectedLanguage === "cpp") {
+                            functionCall = `${cppFunctionName}({${test.input.join(',')}}, ${test.target})`;
+                        }
+                    } else if (numProblemId === 2) {
+                        // Add Two Numbers: addTwoNumbers(l1, l2)
+                        if (selectedLanguage === "javascript") {
+                            functionCall = `${functionName}(${JSON.stringify(test.input.l1)}, ${JSON.stringify(test.input.l2)})`;
+                        } else if (selectedLanguage === "python") {
+                            functionCall = `${pythonFunctionName}(${JSON.stringify(test.input.l1)}, ${JSON.stringify(test.input.l2)})`;
+                        } else if (selectedLanguage === "java") {
+                            functionCall = `${javaFunctionName}(new int[]{${test.input.l1.join(',')}}, new int[]{${test.input.l2.join(',')}})`;
+                        } else if (selectedLanguage === "cpp") {
+                            functionCall = `${cppFunctionName}({${test.input.l1.join(',')}}, {${test.input.l2.join(',')}})`;
+                        }
+                    } else if (numProblemId === 3) {
+                        // Longest Substring: lengthOfLongestSubstring(s)
+                        if (selectedLanguage === "javascript") {
+                            functionCall = `${functionName}(${JSON.stringify(test.input)})`;
+                        } else if (selectedLanguage === "python") {
+                            functionCall = `${pythonFunctionName}(${JSON.stringify(test.input)})`;
+                        } else if (selectedLanguage === "java") {
+                            functionCall = `${javaFunctionName}("${test.input}")`;
+                        } else if (selectedLanguage === "cpp") {
+                            functionCall = `${cppFunctionName}("${test.input}")`;
+                        }
+                    } else if (numProblemId === 4) {
+                        // Median of Arrays: findMedianSortedArrays(nums1, nums2)
+                        if (selectedLanguage === "javascript") {
+                            functionCall = `${functionName}(${JSON.stringify(test.input.nums1)}, ${JSON.stringify(test.input.nums2)})`;
+                        } else if (selectedLanguage === "python") {
+                            functionCall = `${pythonFunctionName}(${JSON.stringify(test.input.nums1)}, ${JSON.stringify(test.input.nums2)})`;
+                        } else if (selectedLanguage === "java") {
+                            functionCall = `${javaFunctionName}(new int[]{${test.input.nums1.join(',')}}, new int[]{${test.input.nums2.join(',')}})`;
+                        } else if (selectedLanguage === "cpp") {
+                            functionCall = `${cppFunctionName}({${test.input.nums1.join(',')}}, {${test.input.nums2.join(',')}})`;
+                        }
+                    } else if (numProblemId === 5) {
+                        // Reverse List: reverseList(head)
+                        if (selectedLanguage === "javascript") {
+                            functionCall = `${functionName}(${JSON.stringify(test.input)})`;
+                        } else if (selectedLanguage === "python") {
+                            functionCall = `${pythonFunctionName}(${JSON.stringify(test.input)})`;
+                        } else if (selectedLanguage === "java") {
+                            functionCall = `${javaFunctionName}(new int[]{${test.input.join(',')}})`;
+                        } else if (selectedLanguage === "cpp") {
+                            functionCall = `${cppFunctionName}({${test.input.join(',')}})`;
+                        }
+                    }
+
+                    // Fallback: if functionCall is still empty, use a default
+                    if (!functionCall) {
                     if (selectedLanguage === "javascript") {
                         functionCall = `${functionName}(${JSON.stringify(test.input)}, ${test.target})`;
                     } else if (selectedLanguage === "python") {
@@ -1626,8 +1654,8 @@ If still not working, the issue is likely network/firewall related.`;
 
                 // Generate wrapped code based on language
                 let wrappedCode = "";
-                if (selectedLanguage === "javascript") {
-                    wrappedCode = `${code}
+                    if (selectedLanguage === "javascript") {
+                        wrappedCode = `${currentCode}
 
 // Auto-call the function with test case
 try {
@@ -1636,35 +1664,35 @@ try {
 } catch (error) {
     console.error(error.message);
 }`;
-                } else if (selectedLanguage === "python") {
-                    wrappedCode = `
-${code}
+                    } else if (selectedLanguage === "python") {
+                        wrappedCode = `
+${currentCode}
 
 # Auto-call the function with test case
 import json
 print(json.dumps(${functionCall}))
 `;
-                } else if (selectedLanguage === "java") {
-                    // Extract the method body from user code
-                    let methodBody = code.trim();
+                    } else if (selectedLanguage === "java") {
+                        // Extract the method body from user code
+                        let methodBody = currentCode.trim();
 
-                    // Remove 'public' prefix if it exists
-                    if (methodBody.startsWith('public ')) {
-                        methodBody = methodBody.replace(/^public\s+/, '');
-                    }
+                        // Remove 'public' prefix if it exists
+                        if (methodBody.startsWith('public ')) {
+                            methodBody = methodBody.replace(/^public\s+/, '');
+                        }
 
-                    // Ensure it has public static prefix
-                    if (!methodBody.startsWith('static ')) {
-                        methodBody = 'public static ' + methodBody;
-                    } else {
-                        methodBody = 'public ' + methodBody;
-                    }
+                        // Ensure it has public static prefix
+                        if (!methodBody.startsWith('static ')) {
+                            methodBody = 'public static ' + methodBody;
+                        } else {
+                            methodBody = 'public ' + methodBody;
+                        }
 
-                    // For problems that return non-array types, don't use Arrays.toString()
-                    const needsArraysToString = problemId === 1 || problemId === 2 || problemId === 5;
-                    const printStatement = needsArraysToString ? `Arrays.toString(${functionCall})` : `${functionCall}`;
+                        // For problems that return non-array types, don't use Arrays.toString()
+                        const needsArraysToString = numProblemId === 1 || numProblemId === 2 || numProblemId === 5;
+                        const printStatement = needsArraysToString ? `Arrays.toString(${functionCall})` : `${functionCall}`;
 
-                    wrappedCode = `import java.util.*;
+                        wrappedCode = `import java.util.*;
 
 public class Main {
     ${methodBody}
@@ -1677,8 +1705,8 @@ public class Main {
         }
     }
 }`;
-                } else if (selectedLanguage === "cpp") {
-                    wrappedCode = `#include <iostream>
+                    } else if (selectedLanguage === "cpp") {
+                        wrappedCode = `#include <iostream>
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -1696,7 +1724,7 @@ void printVector(const vector<T>& vec) {
     cout << "]";
 }
 
-${code}
+${currentCode}
 
 int main() {
     try {
@@ -1714,19 +1742,16 @@ int main() {
     }
     return 0;
 }`;
-                }
+                    }
 
-                try {
-                    const submission = {
-                        source_code: wrappedCode,
-                        language_id: languageMap[selectedLanguage],
-                        stdin: "",
-                    };
+                    console.log('📤 Sending code to Judge0...', { language: selectedLanguage, problemId: numProblemId });
 
-                    const res = await fetch("/api/judge", {
+                    const res = await fetch("https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=true", {
                         method: "POST",
                         headers: {
-                            "Content-Type": "application/json"
+                            "Content-Type": "application/json",
+                            "x-rapidapi-host": "judge0-ce.p.rapidapi.com",
+                            "x-rapidapi-key": "1f4bcaf085mshdb3d102dc891ab6p12b4d2jsn3480d98ed8c1"
                         },
                         body: JSON.stringify({
                             source_code: btoa(wrappedCode),
@@ -1735,21 +1760,63 @@ int main() {
                         }),
                     });
 
+                    if (!res.ok) {
+                        const errorText = await res.text();
+                        console.error('❌ Judge0 API error:', res.status, errorText);
+                        setOutput(`Error: Judge0 API returned status ${res.status}\n${errorText}`);
+                        setLoading(false);
+                        return;
+                    }
+
                     const result = await res.json();
-                    if (result.stdout) {
+                    console.log('✅ Judge0 response:', result);
+                    
+                    // Check status first - Judge0 uses status.id to indicate execution state
+                    if (result.status && result.status.id) {
+                        const statusId = result.status.id;
+                        // Status 3 = Accepted, 4 = Wrong Answer, 5 = Time Limit, 6 = Compilation Error, etc.
+                        if (statusId === 3) {
+                            // Success - show output
+                            if (result.stdout) {
+                                setOutput("Output:\n" + atob(result.stdout));
+                            } else {
+                                setOutput("Output:\n(No output)");
+                            }
+                        } else if (statusId === 6) {
+                            // Compilation Error
+                            if (result.compile_output) {
+                                setOutput("Compilation Error:\n" + atob(result.compile_output));
+                            } else {
+                                setOutput("Compilation Error:\n(No error details available)");
+                            }
+                        } else {
+                            // Runtime Error or other issues
+                            if (result.stderr) {
+                                setOutput("Runtime Error:\n" + atob(result.stderr));
+                            } else if (result.message) {
+                                setOutput("Error:\n" + result.message);
+                            } else {
+                                setOutput(`Error: Status ${statusId} - ${result.status.description || 'Unknown error'}`);
+                            }
+                        }
+                    } else if (result.stdout) {
+                        // Fallback: check stdout directly
                         setOutput("Output:\n" + atob(result.stdout));
                     } else if (result.stderr) {
                         setOutput("Error:\n" + atob(result.stderr));
                     } else if (result.compile_output) {
                         setOutput("Compilation Error:\n" + atob(result.compile_output));
+                    } else if (result.message) {
+                        setOutput("Error:\n" + result.message);
                     } else {
                         setOutput("Unexpected response:\n" + JSON.stringify(result, null, 2));
                     }
                 } catch (err) {
-                    setOutput("Error calling Judge0: " + err.message);
+                    console.error('❌ Error in handleRunCode:', err);
+                    setOutput("Error calling Judge0: " + (err.message || String(err)));
+                } finally {
+                    setLoading(false);
                 }
-
-                setLoading(false);
             };
 
             // Replace handleSubmitCode with Judge0 + test cases
@@ -2198,7 +2265,18 @@ User question: ${newAiMessage}`;
                             {/* Result Area */}
                             {/* Result Area - DevTools Style */}
                             <div className="bg-gray-900/80 rounded-xl overflow-hidden border border-gray-700 shadow-2xl flex flex-col min-h-[200px] mb-6 backdrop-blur-md">
-                                {submissionResults ? (
+                                {output ? (
+                                    <div className="p-6 overflow-auto custom-scrollbar bg-gray-900/50">
+                                        <div className="space-y-4">
+                                            <div className="text-gray-400 text-xs uppercase font-bold tracking-wider flex items-center gap-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Output
+                                            </div>
+                                            <div className="bg-gray-950/50 p-4 rounded-lg border border-gray-800 font-mono text-gray-300 text-sm shadow-inner whitespace-pre-wrap">
+                                                {output}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : submissionResults ? (
                                     <div className="flex flex-col md:flex-row h-full">
                                         {/* Status Sidebar / Topbar */}
                                         <div className="w-full md:w-48 bg-gray-800/50 border-b md:border-b-0 md:border-r border-gray-700 flex flex-col">
