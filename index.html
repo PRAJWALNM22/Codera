@@ -1521,7 +1521,7 @@ If still not working, the issue is likely network/firewall related.`;
 
                     // Get the current code from the editor
                     const currentCode = editorRef.current ? editorRef.current.getValue() : code;
-                    
+
                     if (!currentCode || currentCode.trim() === '') {
                         setOutput("Error: No code to run. Please write some code in the editor.");
                         setLoading(false);
@@ -1547,7 +1547,7 @@ If still not working, the issue is likely network/firewall related.`;
 
                     // Run with the first test case only for "Run Code"
                     const test = problem.testCases[0];
-                    
+
                     if (!test) {
                         setOutput("Error: Test case not available.");
                         setLoading(false);
@@ -1641,19 +1641,19 @@ If still not working, the issue is likely network/firewall related.`;
 
                     // Fallback: if functionCall is still empty, use a default
                     if (!functionCall) {
-                    if (selectedLanguage === "javascript") {
-                        functionCall = `${functionName}(${JSON.stringify(test.input)}, ${test.target})`;
-                    } else if (selectedLanguage === "python") {
-                        functionCall = `${pythonFunctionName}(${JSON.stringify(test.input)}, ${test.target})`;
-                    } else if (selectedLanguage === "java") {
-                        functionCall = `${javaFunctionName}(new int[]{${test.input.join(',')}}, ${test.target})`;
-                    } else if (selectedLanguage === "cpp") {
-                        functionCall = `${cppFunctionName}({${test.input.join(',')}}, ${test.target})`;
+                        if (selectedLanguage === "javascript") {
+                            functionCall = `${functionName}(${JSON.stringify(test.input)}, ${test.target})`;
+                        } else if (selectedLanguage === "python") {
+                            functionCall = `${pythonFunctionName}(${JSON.stringify(test.input)}, ${test.target})`;
+                        } else if (selectedLanguage === "java") {
+                            functionCall = `${javaFunctionName}(new int[]{${test.input.join(',')}}, ${test.target})`;
+                        } else if (selectedLanguage === "cpp") {
+                            functionCall = `${cppFunctionName}({${test.input.join(',')}}, ${test.target})`;
+                        }
                     }
-                }
 
-                // Generate wrapped code based on language
-                let wrappedCode = "";
+                    // Generate wrapped code based on language
+                    let wrappedCode = "";
                     if (selectedLanguage === "javascript") {
                         wrappedCode = `${currentCode}
 
@@ -1770,7 +1770,7 @@ int main() {
 
                     const result = await res.json();
                     console.log('✅ Judge0 response:', result);
-                    
+
                     // Check status first - Judge0 uses status.id to indicate execution state
                     if (result.status && result.status.id) {
                         const statusId = result.status.id;
@@ -5259,16 +5259,7 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                                 {/* Diagnostic and Exit Controls */}
                                 <div className="flex items-center space-x-1 flex-shrink-0">
                                     {/* WebRTC Diagnostic Button */}
-                                    <button
-                                        onClick={runWebRTCDiagnostic}
-                                        className="p-2 rounded-md bg-yellow-600 hover:bg-yellow-700 transition duration-200"
-                                        aria-label="Run WebRTC diagnostic"
-                                        title="Test WebRTC Support & Connectivity"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                    </button>
+
 
                                     <button
                                         onClick={() => navigateTo('/battle')}
@@ -5492,8 +5483,8 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                                                                     <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div> Output
                                                                 </div>
                                                                 <div className={`p-4 rounded-lg border font-mono text-sm shadow-inner transition-colors ${submissionResults.results[activeResultTab].status === 'Accepted'
-                                                                        ? 'bg-gray-950/50 border-gray-800 text-gray-300'
-                                                                        : 'bg-red-900/10 border-red-900/30 text-red-200'
+                                                                    ? 'bg-gray-950/50 border-gray-800 text-gray-300'
+                                                                    : 'bg-red-900/10 border-red-900/30 text-red-200'
                                                                     }`}>
                                                                     {submissionResults.results[activeResultTab].actual !== null
                                                                         ? JSON.stringify(submissionResults.results[activeResultTab].actual)
@@ -5717,18 +5708,10 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
                     )}
 
                     {/* Audio Elements for WebRTC - Keep visible for debugging */}
-                    <div className="fixed bottom-4 left-4 bg-gray-800 p-2 rounded border border-gray-600" style={{ display: isVoiceChatEnabled ? 'block' : 'none' }}>
-                        <div className="text-xs text-gray-300 mb-1">Audio Debug:</div>
-                        <div className="space-y-1">
-                            <div className="flex items-center space-x-2">
-                                <span className="text-xs text-gray-400">Local:</span>
-                                <audio ref={localAudioRef} muted={true} controls className="w-24 h-6" />
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <span className="text-xs text-gray-400">Remote:</span>
-                                <audio ref={remoteAudioRef} autoPlay={true} controls className="w-24 h-6" />
-                            </div>
-                        </div>
+                    {/* Audio Elements for WebRTC (Hidden) */}
+                    <div style={{ display: 'none' }}>
+                        <audio ref={localAudioRef} muted={true} autoPlay playsInline />
+                        <audio ref={remoteAudioRef} autoPlay={true} playsInline />
                     </div>
 
                 </div>
@@ -6116,29 +6099,25 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
             const isMyProfile = targetId === userId;
 
             useEffect(() => {
-                const fetchProfile = async () => {
-                    if (!db) return; // Wait for db connection
-                    
-                    if (!targetId) {
-                        setLoading(false);
-                        return;
-                    }
-                    try {
-                        const doc = await db.collection('users').doc(targetId).get();
-                        if (doc.exists) {
-                            setProfileData({ id: doc.id, ...doc.data() });
-                        } else {
-                            console.error("Profile not found");
-                            setProfileData(null);
-                        }
-                    } catch (error) {
-                        console.error("Error fetching profile:", error);
-                    } finally {
-                        setLoading(false);
-                    }
+                // Hardcoded profile data for demo purposes
+                const mockProfile = {
+                    id: targetId,
+                    username: 'CodeMaster',
+                    codingLevel: 'Master',
+                    bio: 'Full-stack developer and competitive programmer. Love solving complex algorithmic challenges!',
+                    stats: {
+                        streakCount: 42,
+                        practiceSolved: 128,
+                        wins: 15,
+                        winRate: '75%'
+                    },
+                    badges: ['Beta Tester', 'Fast Coder', 'Algorithm Pro']
                 };
-                fetchProfile();
-            }, [db, targetId]);
+
+                // Simulate network delay slightly for realism, or set immediately
+                setProfileData(mockProfile);
+                setLoading(false);
+            }, [targetId]);
 
             const handleAddFriend = () => {
                 // Placeholder for now, logic exists in FriendsPage
