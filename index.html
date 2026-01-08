@@ -3139,17 +3139,7 @@ User question: ${newAiMessage}`;
             const [submissionResults, setSubmissionResults] = useState(null);
             const [activeResultTab, setActiveResultTab] = useState(0);
             const [timer, setTimer] = useState(600); // remaining seconds
-            // Initialize chat messages with persistence
-            const [chatMessages, setChatMessages] = useState(() => {
-                try {
-                    const saved = localStorage.getItem(`battle-chat-${roomId}`);
-                    return saved ? JSON.parse(saved) : [];
-                } catch (e) {
-                    console.warn('⚠️ Could not load saved chat messages:', e);
-                    return [];
-                }
-            });
-            const [newChatMessage, setNewChatMessage] = useState('');
+
             const [battleStatus, setBattleStatus] = useState("Waiting"); // "Waiting", "In Progress", "Ended"
             const [activeBattleTab, setActiveBattleTab] = useState('Description'); // For Battle Room tabs
             const [player1Progress, setPlayer1Progress] = useState(0); // For progress bars
@@ -3222,8 +3212,7 @@ User question: ${newAiMessage}`;
             const screenPeerConnectionRef = useRef(null);
             const socketRef = useRef(null);
 
-            // Ref for chat scroll
-            const chatEndRef = useRef(null);
+
             const isHost = isCreator; // creator is host
 
             // Helper: stable player id
@@ -4272,84 +4261,7 @@ int main() {
                 setLoading(false);
             };
 
-            const handleSendChatMessage = () => {
-                console.log('💬 Attempting to send chat message:', newChatMessage);
-                console.log('💬 Current chat messages count:', chatMessages.length);
-                console.log('💬 Current user ID:', userId || myId || "Guest");
 
-                if (newChatMessage.trim()) {
-                    const sender = userId || myId || "Guest";
-                    const message = {
-                        id: Date.now() + Math.random(), // Unique ID
-                        sender: sender,
-                        text: newChatMessage.trim(),
-                        timestamp: new Date()
-                    };
-
-                    console.log('💬 Sending message:', message);
-                    setChatMessages((prev) => {
-                        const updated = [...prev, message];
-                        console.log('💬 Updated chat messages:', updated);
-
-                        // Save to localStorage
-                        try {
-                            localStorage.setItem(`battle-chat-${roomId || 'local'}`, JSON.stringify(updated));
-                            console.log('📋 Saved chat messages to localStorage');
-                        } catch (e) {
-                            console.warn('⚠️ Could not save chat messages:', e);
-                        }
-
-                        return updated;
-                    });
-                    setNewChatMessage('');
-
-                    // Auto-scroll to bottom after sending message
-                    setTimeout(() => {
-                        if (chatEndRef.current) {
-                            chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-                        }
-                    }, 100);
-                } else {
-                    console.log('⚠️ Empty message, not sending');
-                }
-            };
-
-            // Auto-scroll chat to bottom when new messages arrive
-            useEffect(() => {
-                console.log('📜 Chat messages updated, count:', chatMessages.length);
-                console.log('📜 Messages:', chatMessages.map(m => `${m.sender}: ${m.text}`));
-                if (chatEndRef.current) {
-                    chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-                }
-            }, [chatMessages]);
-
-            // Clear chat messages when room changes
-            useEffect(() => {
-                if (roomId) {
-                    try {
-                        const saved = localStorage.getItem(`battle-chat-${roomId}`);
-                        if (saved) {
-                            const messages = JSON.parse(saved);
-                            setChatMessages(messages);
-                            console.log('📜 Loaded', messages.length, 'saved chat messages for room', roomId);
-                        } else {
-                            setChatMessages([]);
-                            console.log('📜 No saved messages for room', roomId);
-                        }
-                    } catch (e) {
-                        console.warn('⚠️ Could not load chat messages for room', roomId, ':', e);
-                        setChatMessages([]);
-                    }
-                }
-            }, [roomId]);
-
-            // Handle Enter key press for chat
-            const handleChatKeyPress = (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleSendChatMessage();
-                }
-            };
 
             const formatTime = (seconds) => {
                 const minutes = Math.floor(seconds / 60);
@@ -5584,42 +5496,7 @@ ${results.webrtc && !results.getDisplayMedia ? '⚠️ Screen sharing may not be
 
                     {/* Chat and Voice Chat */}
                     <section className="w-full max-w-7xl bg-gray-800 p-4 rounded-lg shadow-lg mt-4 flex flex-col md:flex-row gap-4">
-                        {/* Chat Window */}
-                        <div className="flex-1 flex flex-col min-h-[200px] max-h-[300px] md:max-h-[250px]">
-                            <h2 className="text-xl font-semibold text-white mb-2 border-b border-gray-600 pb-2">Chat</h2>
-                            <div className="flex-grow bg-gray-700 p-3 rounded-md mb-3 overflow-y-auto custom-scrollbar">
-                                {chatMessages.length === 0 ? (
-                                    <p className="text-gray-400">No messages yet. Say hello!</p>
-                                ) : (
-                                    chatMessages.map((msg, index) => (
-                                        <div key={index} className="mb-1">
-                                            <span className="font-bold text-blue-400">{msg.sender}:</span>{' '}
-                                            <span className="text-gray-200">{msg.text}</span>
-                                            <span className="text-xs text-gray-500 ml-2">{msg.timestamp.toLocaleTimeString()}</span>
-                                        </div>
-                                    ))
-                                )}
-                                <div ref={chatEndRef} />
-                            </div>
-                            <div className="flex">
-                                <input
-                                    type="text"
-                                    value={newChatMessage}
-                                    onChange={(e) => setNewChatMessage(e.target.value)}
-                                    onKeyDown={handleChatKeyPress}
-                                    className="flex-grow bg-gray-700 text-gray-200 p-2 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Type your message..."
-                                    aria-label="Chat input field"
-                                />
-                                <button
-                                    onClick={handleSendChatMessage}
-                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-r-md transition duration-200"
-                                    aria-label="Send chat message"
-                                >
-                                    Send
-                                </button>
-                            </div>
-                        </div>
+
 
                         {/* Voice Chat & Screen Sharing Status */}
                         <div className="flex-1 flex flex-col bg-gray-700 p-4 rounded-lg shadow-inner">
